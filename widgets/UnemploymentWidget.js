@@ -3515,3 +3515,4 @@ function recessionBands(rec) {
 }
 // The BLS releases the jobs report at 8:30 am New York time
 await runWidget(CACHE_FILE, fetchUnemployment, unemploymentImage, jobsPayload, { hh: 8, mm: 30 });
+// Update test, Nov 17, 2026 (no change in behavior)

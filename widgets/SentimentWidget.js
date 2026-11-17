@@ -2433,3 +2433,4 @@ function umichLinks(u) {
 
 // University of Michigan releases at 10:00 am New York time
 await runWidget(CACHE_FILE, fetchSentimentAll, sentimentImage, sentimentPayload, { hh: 10, mm: 0 });
+// Update test, Nov 17, 2026 (no change in behavior)

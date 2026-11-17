@@ -1612,3 +1612,4 @@ if (config.runsInWidget || PREVIEW_WIDGET_IN_APP) {
   await openFullScreen(saved && saved.csas ? saved : null);
 }
 Script.complete();
+// Update test, Nov 17, 2026 (no change in behavior)

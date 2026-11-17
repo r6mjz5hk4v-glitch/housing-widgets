@@ -2069,3 +2069,4 @@ function savingPayload(d, loading) {
 
 // The BEA releases Personal Income and Outlays at 8:30 am New York time
 await runWidget(CACHE_FILE, fetchSaving, savingImage, savingPayload, { hh: 8, mm: 30 });
+// Update test, Nov 17, 2026 (no change in behavior)
