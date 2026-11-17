@@ -21,7 +21,7 @@ function setting(key, fallback) {
 // When GitHub has a newer version of this widget: a thin yellow glow around the
 // widget face, and an "Update ready" card in the full view with a Run Installer button.
 const UPD_REPO = "r6mjz5hk4v-glitch/housing-widgets";
-const UPD_CACHE = "housing-widgets-update.json";
+const UPD_CACHE = "housing-widgets-update-v2.json"; // v2: fingerprints from the title line down
 function updHash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); }
 // the code from the title line down: Scriptable rewrites the icon lines above it, so they don't count
 function updBody(src, sig) { const t = src.replace(/\r\n/g, "\n"), i = t.indexOf(sig); return (i >= 0 ? t.slice(i) : t).replace(/\s+$/, ""); }
