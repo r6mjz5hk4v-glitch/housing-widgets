@@ -1,0 +1,206 @@
+{
+ "updated": "Nov 17, 2026",
+ "files": [
+  {
+   "name": "Setup",
+   "file": "Setup.js",
+   "title": "Setup",
+   "about": "Run once: your FRED key, name/email for SEC data, optional ElevenLabs key, home metro",
+   "needs": [],
+   "sig": "// Setup for the Housing Widgets"
+  },
+  {
+   "name": "Installer",
+   "file": "Installer.js",
+   "title": "Installer",
+   "about": "Installs and updates everything below (and itself)",
+   "needs": [],
+   "sig": "// Installer for the Housing Widgets"
+  },
+  {
+   "name": "Mortgage Spread",
+   "file": "MortgageSpreadWidget.js",
+   "title": "Mortgage Spread",
+   "about": "30-year mortgage rate vs the 10-year Treasury, with a term-premium breakdown",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)"
+  },
+  {
+   "name": "Rates",
+   "file": "MarketRateWidget.js",
+   "title": "Rates",
+   "about": "Weighted average 30-year note rate across loan products (Optimal Blue)",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate"
+  },
+  {
+   "name": "ARM Indicator",
+   "file": "ArmIndicatorWidget.js",
+   "title": "ARM Indicator",
+   "about": "10Y minus 5Y Treasury slope: when an ARM pencils",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)"
+  },
+  {
+   "name": "SOFR 30 Avg",
+   "file": "Sofr30Widget.js",
+   "title": "SOFR 30 Avg",
+   "about": "30-day average SOFR (NY Fed)",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)"
+  },
+  {
+   "name": "Lock In",
+   "file": "LockInWidget.js",
+   "title": "Lock In",
+   "about": "Outstanding mortgages by note-rate bucket",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// Rate Lock-In for Scriptable"
+  },
+  {
+   "name": "New Homes",
+   "file": "NewConstructionWidget.js",
+   "title": "New Homes",
+   "about": "Single-family starts by purpose, last 12 months vs prior",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// New Construction for Scriptable"
+  },
+  {
+   "name": "Builder Inputs",
+   "file": "BuilderInputsWidget.js",
+   "title": "Builder Inputs",
+   "about": "How much of new-home price growth building costs explain",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// Builder Inputs for Scriptable"
+  },
+  {
+   "name": "Builder Stocks",
+   "file": "BuilderStocksWidget.js",
+   "title": "Builder Stocks",
+   "about": "Heatmap of the 10 largest builder stocks, plus earnings-call replays",
+   "needs": [
+    "sec?"
+   ],
+   "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public"
+  },
+  {
+   "name": "Existing",
+   "file": "ExistingHomesWidget.js",
+   "title": "Existing",
+   "about": "Existing-home sales, prices and inventory (NAR)",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// Existing Homes for Scriptable"
+  },
+  {
+   "name": "Balance of Power",
+   "file": "RedfinBuyersSellersWidget.js",
+   "title": "Balance of Power",
+   "about": "Redfin's count of active buyers vs sellers",
+   "needs": [],
+   "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable"
+  },
+  {
+   "name": "Affordability Gap",
+   "file": "AffordabilityGapWidget.js",
+   "title": "Affordability Gap",
+   "about": "Income needed for the median home vs median income, by metro (Atlanta Fed)",
+   "needs": [
+    "metro"
+   ],
+   "sig": "// Housing Affordability Gap for Scriptable"
+  },
+  {
+   "name": "Payment Change",
+   "file": "PaymentChangeWidget.js",
+   "title": "Payment Change",
+   "about": "Monthly payment vs N years ago: price vs rate",
+   "needs": [
+    "fred",
+    "metro"
+   ],
+   "sig": "// Payment vs N Years Ago for Scriptable"
+  },
+  {
+   "name": "Migration",
+   "file": "MigrationWidget.js",
+   "title": "Migration",
+   "about": "Net migration by metro (Census)",
+   "needs": [
+    "metro"
+   ],
+   "sig": "// Metro Migration for Scriptable"
+  },
+  {
+   "name": "Redfin Migration",
+   "file": "RedfinMigrationWidget.js",
+   "title": "Redfin Migration",
+   "about": "Where house hunters want to move (Redfin)",
+   "needs": [
+    "metro"
+   ],
+   "sig": "// Redfin Migration for Scriptable"
+  },
+  {
+   "name": "Borrower Credit",
+   "file": "BorrowerCreditWidget.js",
+   "title": "Borrower Credit",
+   "about": "Household debt and delinquency (NY Fed)",
+   "needs": [],
+   "sig": "// Borrower Credit for Scriptable"
+  },
+  {
+   "name": "Personal Savings",
+   "file": "SavingRateWidget.js",
+   "title": "Personal Savings",
+   "about": "Personal saving rate (BEA)",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// Personal Saving Rate Widget for Scriptable (small widget)"
+  },
+  {
+   "name": "Sentiment",
+   "file": "SentimentWidget.js",
+   "title": "Sentiment",
+   "about": "University of Michigan sentiment",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// Consumer Sentiment Widget for Scriptable (small widget)"
+  },
+  {
+   "name": "Unemployment",
+   "file": "UnemploymentWidget.js",
+   "title": "Unemployment",
+   "about": "Unemployment rate (BLS)",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// Unemployment Rate Widget for Scriptable (small widget)"
+  },
+  {
+   "name": "Chartbook",
+   "file": "ReportsWidget.js",
+   "title": "Chartbook",
+   "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA, HUD, Fed, builder 10-Qs) with Listen",
+   "needs": [],
+   "sig": "// Reports Widget (small): a release calendar for the industry reports you"
+  }
+ ]
+}
