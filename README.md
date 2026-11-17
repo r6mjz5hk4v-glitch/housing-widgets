@@ -24,6 +24,8 @@ Repeat step 6 for each widget you want.
 
 Run **Installer** again. It only rewrites what changed, updates itself, and keeps your settings.
 
+You don't have to keep checking: once a day each widget looks for a newer version on GitHub. When there is one, the widget gets a thin yellow glow around its edge, and its full view shows an **Update ready** card with a **Run Installer** button.
+
 ## The widgets
 
 | Widget | What it shows | Needs |

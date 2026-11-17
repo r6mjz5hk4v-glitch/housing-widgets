@@ -7,7 +7,8 @@
    "title": "Setup",
    "about": "Run once: your FRED key, name/email for SEC data, optional ElevenLabs key, home metro",
    "needs": [],
-   "sig": "// Setup for the Housing Widgets"
+   "sig": "// Setup for the Housing Widgets",
+   "hash": "3a72b889"
   },
   {
    "name": "Installer",
@@ -15,7 +16,8 @@
    "title": "Installer",
    "about": "Installs and updates everything below (and itself)",
    "needs": [],
-   "sig": "// Installer for the Housing Widgets"
+   "sig": "// Installer for the Housing Widgets",
+   "hash": "6583ea33"
   },
   {
    "name": "Mortgage Spread",
@@ -25,7 +27,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)"
+   "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)",
+   "hash": "8be788f6"
   },
   {
    "name": "Rates",
@@ -35,7 +38,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate"
+   "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate",
+   "hash": "fecb55b8"
   },
   {
    "name": "ARM Indicator",
@@ -45,7 +49,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)"
+   "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)",
+   "hash": "b41881e1"
   },
   {
    "name": "SOFR 30 Avg",
@@ -55,7 +60,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)"
+   "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)",
+   "hash": "c6037f93"
   },
   {
    "name": "Lock In",
@@ -65,7 +71,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// Rate Lock-In for Scriptable"
+   "sig": "// Rate Lock-In for Scriptable",
+   "hash": "f3394552"
   },
   {
    "name": "New Homes",
@@ -75,7 +82,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// New Construction for Scriptable"
+   "sig": "// New Construction for Scriptable",
+   "hash": "8ae2954"
   },
   {
    "name": "Builder Inputs",
@@ -85,7 +93,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// Builder Inputs for Scriptable"
+   "sig": "// Builder Inputs for Scriptable",
+   "hash": "7eb05a8a"
   },
   {
    "name": "Builder Stocks",
@@ -95,7 +104,8 @@
    "needs": [
     "sec?"
    ],
-   "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public"
+   "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
+   "hash": "823084e1"
   },
   {
    "name": "Existing",
@@ -105,7 +115,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// Existing Homes for Scriptable"
+   "sig": "// Existing Homes for Scriptable",
+   "hash": "45e64d16"
   },
   {
    "name": "Balance of Power",
@@ -113,7 +124,8 @@
    "title": "Balance of Power",
    "about": "Redfin's count of active buyers vs sellers",
    "needs": [],
-   "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable"
+   "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable",
+   "hash": "f61a937f"
   },
   {
    "name": "Affordability Gap",
@@ -123,7 +135,8 @@
    "needs": [
     "metro"
    ],
-   "sig": "// Housing Affordability Gap for Scriptable"
+   "sig": "// Housing Affordability Gap for Scriptable",
+   "hash": "71247d11"
   },
   {
    "name": "Payment Change",
@@ -134,7 +147,8 @@
     "fred",
     "metro"
    ],
-   "sig": "// Payment vs N Years Ago for Scriptable"
+   "sig": "// Payment vs N Years Ago for Scriptable",
+   "hash": "5e75c73f"
   },
   {
    "name": "Migration",
@@ -144,7 +158,8 @@
    "needs": [
     "metro"
    ],
-   "sig": "// Metro Migration for Scriptable"
+   "sig": "// Metro Migration for Scriptable",
+   "hash": "1d52610d"
   },
   {
    "name": "Redfin Migration",
@@ -154,7 +169,8 @@
    "needs": [
     "metro"
    ],
-   "sig": "// Redfin Migration for Scriptable"
+   "sig": "// Redfin Migration for Scriptable",
+   "hash": "276e659c"
   },
   {
    "name": "Borrower Credit",
@@ -162,7 +178,8 @@
    "title": "Borrower Credit",
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
-   "sig": "// Borrower Credit for Scriptable"
+   "sig": "// Borrower Credit for Scriptable",
+   "hash": "53d7a2f4"
   },
   {
    "name": "Personal Savings",
@@ -172,7 +189,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// Personal Saving Rate Widget for Scriptable (small widget)"
+   "sig": "// Personal Saving Rate Widget for Scriptable (small widget)",
+   "hash": "18bc1cab"
   },
   {
    "name": "Sentiment",
@@ -182,7 +200,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// Consumer Sentiment Widget for Scriptable (small widget)"
+   "sig": "// Consumer Sentiment Widget for Scriptable (small widget)",
+   "hash": "4286e881"
   },
   {
    "name": "Unemployment",
@@ -192,7 +211,8 @@
    "needs": [
     "fred"
    ],
-   "sig": "// Unemployment Rate Widget for Scriptable (small widget)"
+   "sig": "// Unemployment Rate Widget for Scriptable (small widget)",
+   "hash": "b79f3f30"
   },
   {
    "name": "Chartbook",
@@ -200,7 +220,8 @@
    "title": "Chartbook",
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA, HUD, Fed, builder 10-Qs) with Listen",
    "needs": [],
-   "sig": "// Reports Widget (small): a release calendar for the industry reports you"
+   "sig": "// Reports Widget (small): a release calendar for the industry reports you",
+   "hash": "bc0add4"
   }
  ]
 }

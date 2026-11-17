@@ -88,6 +88,7 @@ for (const item of man.files) {
   plan.push({ item, targets: t.length ? t : [freeName(item.name)], isNew: !t.length });
 }
 const self = module.filename.split("/").pop();
+try { Keychain.set("hw_installer", self.replace(/\.js$/, "")); } catch (e) {} // the widgets' Run Installer button opens this script by name
 
 // ---- ask ----
 const nNew = plan.filter((p) => p.isNew).length;

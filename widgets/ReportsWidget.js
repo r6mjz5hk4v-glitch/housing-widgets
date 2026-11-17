@@ -34,6 +34,87 @@ function setting(key, fallback) {
 // its last edition came out, or its usual window); a book past its window
 // turns orange, with how late it is, when it was due, and why it isn't in.
 
+// ---- Update check (once a day; one shared request for all the Housing Widgets) ----
+// When GitHub has a newer version of this widget: a thin yellow glow around the
+// widget face, and an "Update ready" card in the full view with a Run Installer button.
+const UPD_REPO = "r6mjz5hk4v-glitch/housing-widgets";
+const UPD_CACHE = "housing-widgets-update.json";
+function updHash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); }
+function updOwnSource() {
+  const fms = [FileManager.local()];
+  try { fms.push(FileManager.iCloud()); } catch (e) {}
+  for (const f of fms) { try { const s = f.readString(module.filename); if (s) return s; } catch (e) {} }
+  return "";
+}
+async function updFetch(fm, p) {
+  const r = new Request("https://raw.githubusercontent.com/" + UPD_REPO + "/main/manifest.json?t=" + Date.now());
+  r.timeoutInterval = 8;
+  const m = await r.loadJSON();
+  if (!m || !m.files) throw new Error("no manifest");
+  const c = { at: Date.now(), files: m.files.filter((f) => f.sig && f.hash).map((f) => ({ sig: f.sig, hash: f.hash })) };
+  fm.writeString(p, JSON.stringify(c));
+  return c;
+}
+async function updCheck(fetchNow) {
+  const fm = FileManager.local(), p = fm.joinPath(fm.documentsDirectory(), UPD_CACHE);
+  let c = null;
+  try { if (fm.fileExists(p)) c = JSON.parse(fm.readString(p)); } catch (e) {}
+  if (!c || Date.now() - (c.at || 0) > 864e5) {
+    if (fetchNow) {
+      try { c = await updFetch(fm, p); }
+      catch (e) { if (c) { c.at = Date.now(); try { fm.writeString(p, JSON.stringify(c)); } catch (e2) {} } } // offline: try again tomorrow
+    } else updFetch(fm, p).catch(() => {}); // in the app: refresh in the background, use what's saved now
+  }
+  if (!c || !c.files) return false;
+  const src = updOwnSource();
+  if (!src) return false;
+  const top = src.slice(0, 3000), mine = c.files.find((f) => top.includes(f.sig));
+  return !!mine && mine.hash !== updHash(src);
+}
+let UPD_READY = false;
+try { UPD_READY = await updCheck(config.runsInWidget); } catch (e) {}
+
+// the glow: a hairline at the edge plus fading strokes stepping inward
+function updRing(img) {
+  if (!UPD_READY) return img;
+  try {
+    const W = img ? img.size.width : 510, H = img ? img.size.height : 510;
+    const dc = new DrawContext();
+    dc.size = new Size(W, H);
+    dc.opaque = false;
+    dc.respectScreenScale = Math.min(W, H) <= 200;
+    if (img) dc.drawImageInRect(img, new Rect(0, 0, W, H));
+    else for (let y = 0; y < H; y += 3) { const t = y / H; dc.setFillColor(new Color("#" + [44 - 16 * t, 44 - 16 * t, 46 - 16 * t].map((v) => Math.round(v).toString(16).padStart(2, "0")).join(""))); dc.fillRect(new Rect(0, y, W, 3)); }
+    const k = Math.min(W, H) / 170, R = 22 * k, core = 0.75 * k, step = 0.8 * k, layers = 10;
+    const ring = (i, w, a) => { const p = new Path(), r = Math.max(4 * k, R - i); p.addRoundedRect(new Rect(i + w / 2, i + w / 2, W - 2 * i - w, H - 2 * i - w), r, r); dc.addPath(p); dc.setStrokeColor(new Color("#FFD60A", a)); dc.setLineWidth(w); dc.strokePath(); };
+    for (let j = layers; j >= 1; j--) ring(core + (j - 1) * step, Math.max(1, step), (70 / 255) * Math.pow(1 - j / (layers + 1), 1.8));
+    ring(0, Math.max(1, core), 0.9);
+    return dc.getImage();
+  } catch (e) { return img; }
+}
+// the full view: an "Update ready" card at the top; its button runs the Installer
+function updPage(html) {
+  // only the main full view (it carries Share as PDF, or is the Reports calendar), never helper pages
+  if (!UPD_READY || typeof html !== "string" || (html.indexOf("__takeShare") < 0 && html.indexOf("<title>Reports</title>") < 0)) return html;
+  const b = html.indexOf("<body");
+  const at = b < 0 ? -1 : html.indexOf(">", b) + 1;
+  if (at <= 0) return html;
+  const inst = encodeURIComponent(setting("hw_installer", "Installer"));
+  // padding (not margin) keeps the page's Share button where it is; class "hint" keeps the card out of PDFs
+  const top = html.indexOf("__takeShare") >= 0 ? 62 : 16;
+  const card = '<div class="hint" style="margin:0;padding:' + top + 'px 16px 0"><div style="display:flex;align-items:center;gap:10px;background:#2C2C2E;border:1.5px solid #FFD60A;border-radius:12px;padding:10px 12px;font-family:-apple-system,system-ui,sans-serif">'
+    + '<div style="flex:1"><div style="color:#FFD60A;font-weight:700;font-size:14.5px">Update ready</div>'
+    + '<div style="color:#C7C7CC;font-size:12.5px;margin-top:2px">A newer version is on GitHub. Run Installer to get it; your keys and settings stay.</div></div>'
+    + '<a href="scriptable:///run/' + inst + '" style="background:#FFD60A;color:#1C1C1E;border-radius:9px;padding:9px 11px;font-size:13.5px;font-weight:700;white-space:nowrap;text-decoration:none">Run Installer</a></div></div>';
+  return html.slice(0, at) + card + html.slice(at);
+}
+function updArgs(html, base) { return base === undefined ? [updPage(html)] : [updPage(html), base]; }
+// let the page's Run Installer link open Scriptable
+function updWV(wv) {
+  try { wv.shouldAllowRequest = (req) => { if (/^scriptable:/i.test(req.url)) { Safari.open(req.url); return false; } return true; }; } catch (e) {}
+  return wv;
+}
+
 // ---------- Config ----------
 const CHECK_HOURS = 6; // how often the widget looks for new editions
 const WIDGET_BUDGET_S = 20; // a widget gets only seconds; past this it shows what it has
@@ -768,7 +849,7 @@ function drawWidget(s) {
 }
 function renderWidget(s) {
   const w = new ListWidget();
-  w.backgroundImage = drawWidget(s);
+  w.backgroundImage = updRing(drawWidget(s));
   w.addSpacer(); // a widget with nothing in it can come up blank
   w.url = URLScheme.forRunningScript();
   w.refreshAfterDate = new Date(Date.now() + CHECK_HOURS * 3600 * 1000);
@@ -824,8 +905,8 @@ window.extractAll = function (b64) {
 </script></body></html>`;
 
 async function runPdfReader(path, fn) {
-  const wv = new WebView();
-  await wv.loadHTML(EXTRACT_HTML);
+  const wv = updWV(new WebView());
+  await wv.loadHTML(...updArgs(EXTRACT_HTML));
   let ready = false;
   for (let i = 0; i < 20 && !ready; i++) {
     ready = await wv.evaluateJavaScript("typeof pdfjsLib !== 'undefined'");
@@ -877,8 +958,8 @@ async function secPdf(url) {
   r.headers = { "User-Agent": SEC_CONTACT || BROWSER_UA };
   r.timeoutInterval = 30;
   const html = await r.loadString();
-  const wv = new WebView();
-  await wv.loadHTML(SEC_RENDER.replace("__BODY__", () => secBody(html)));
+  const wv = updWV(new WebView());
+  await wv.loadHTML(...updArgs(SEC_RENDER.replace("__BODY__", () => secBody(html))));
   let ready = false;
   for (let i = 0; i < 30 && !ready; i++) {
     ready = await wv.evaluateJavaScript("!!(window.jspdf && window.html2canvas)");
@@ -1511,8 +1592,8 @@ async function runApp() {
     saveStore(s);
     await askSecContact();
   }
-  const wv = new WebView();
-  await wv.loadHTML(PAGE_HTML.replace("__DATA__", () => JSON.stringify(payload(s))));
+  const wv = updWV(new WebView());
+  await wv.loadHTML(...updArgs(PAGE_HTML.replace("__DATA__", () => JSON.stringify(payload(s)))));
   let open = true;
   const closed = wv.present(true).then(() => {
     open = false;
