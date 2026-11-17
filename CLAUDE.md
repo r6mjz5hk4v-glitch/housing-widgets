@@ -25,5 +25,5 @@ Scriptable (iOS) widgets for mortgage and housing data. This repo is the master 
 ## Shipping a change
 1. Edit the widget in `widgets/`. Keep its title comment line (the first comment after the header) unchanged: Installer uses it to find the user's copy, whatever the user has named it.
 2. Syntax-check the file and test it under a Scriptable mock where possible.
-3. Rebuild `manifest.json`: one entry per script with `name`, `file`, `title`, `about`, `needs` and `sig` (the title line).
+3. Rebuild `manifest.json`: one entry per script with `name`, `file`, `title`, `about`, `needs`, `sig` (the title line) and `hash`. The hash is FNV-1a (32-bit, hex) over the file's UTF-16 code units, from the title line to the end, with CRLF turned into LF and trailing whitespace trimmed. Widgets compare it with their own code to show the yellow "Update ready" glow, so a wrong hash means false alarms on every phone.
 4. Commit and push to `main`. Then tell the user to run Installer.

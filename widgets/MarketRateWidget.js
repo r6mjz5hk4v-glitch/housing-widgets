@@ -30,6 +30,8 @@ function setting(key, fallback) {
 const UPD_REPO = "r6mjz5hk4v-glitch/housing-widgets";
 const UPD_CACHE = "housing-widgets-update.json";
 function updHash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); }
+// the code from the title line down: Scriptable rewrites the icon lines above it, so they don't count
+function updBody(src, sig) { const t = src.replace(/\r\n/g, "\n"), i = t.indexOf(sig); return (i >= 0 ? t.slice(i) : t).replace(/\s+$/, ""); }
 function updOwnSource() {
   const fms = [FileManager.local()];
   try { fms.push(FileManager.iCloud()); } catch (e) {}
@@ -59,7 +61,7 @@ async function updCheck(fetchNow) {
   const src = updOwnSource();
   if (!src) return false;
   const top = src.slice(0, 3000), mine = c.files.find((f) => top.includes(f.sig));
-  return !!mine && mine.hash !== updHash(src);
+  return !!mine && mine.hash !== updHash(updBody(src, mine.sig));
 }
 let UPD_READY = false;
 try { UPD_READY = await updCheck(config.runsInWidget); } catch (e) {}
@@ -90,13 +92,9 @@ function updPage(html) {
   const at = b < 0 ? -1 : html.indexOf(">", b) + 1;
   if (at <= 0) return html;
   const inst = encodeURIComponent(setting("hw_installer", "Installer"));
-  // padding (not margin) keeps the page's Share button where it is; class "hint" keeps the card out of PDFs
-  const top = html.indexOf("__takeShare") >= 0 ? 62 : 16;
-  const card = '<div class="hint" style="margin:0;padding:' + top + 'px 16px 0"><div style="display:flex;align-items:center;gap:10px;background:#2C2C2E;border:1.5px solid #FFD60A;border-radius:12px;padding:10px 12px;font-family:-apple-system,system-ui,sans-serif">'
-    + '<div style="flex:1"><div style="color:#FFD60A;font-weight:700;font-size:14.5px">Update ready</div>'
-    + '<div style="color:#C7C7CC;font-size:12.5px;margin-top:2px">A newer version is on GitHub. Run Installer to get it; your keys and settings stay.</div></div>'
-    + '<a href="scriptable:///run/' + inst + '" style="background:#FFD60A;color:#1C1C1E;border-radius:9px;padding:9px 11px;font-size:13.5px;font-weight:700;white-space:nowrap;text-decoration:none">Run Installer</a></div></div>';
-  return html.slice(0, at) + card + html.slice(at);
+  // a pill floating at the bottom: it never moves the page's own layout; class "hint" keeps it out of PDFs
+  const pill = '<a class="hint" href="scriptable:///run/' + inst + '" style="position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9999;margin:0;display:flex;align-items:center;gap:8px;background:#FFD60A;color:#1C1C1E;border-radius:22px;padding:11px 18px;font:700 14.5px -apple-system,system-ui,sans-serif;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.45);white-space:nowrap">Update ready · Run Installer ›</a>';
+  return html.slice(0, at) + pill + html.slice(at);
 }
 function updArgs(html, base) { return base === undefined ? [updPage(html)] : [updPage(html), base]; }
 // let the page's Run Installer link open Scriptable

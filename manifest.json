@@ -8,7 +8,7 @@
    "about": "Run once: your FRED key, name/email for SEC data, optional ElevenLabs key, home metro",
    "needs": [],
    "sig": "// Setup for the Housing Widgets",
-   "hash": "3a72b889"
+   "hash": "e77ef609"
   },
   {
    "name": "Installer",
@@ -17,7 +17,7 @@
    "about": "Installs and updates everything below (and itself)",
    "needs": [],
    "sig": "// Installer for the Housing Widgets",
-   "hash": "6583ea33"
+   "hash": "dd04f9ff"
   },
   {
    "name": "Mortgage Spread",
@@ -28,7 +28,7 @@
     "fred"
    ],
    "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "8be788f6"
+   "hash": "af398c60"
   },
   {
    "name": "Rates",
@@ -39,7 +39,7 @@
     "fred"
    ],
    "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate",
-   "hash": "fecb55b8"
+   "hash": "89f0b8d6"
   },
   {
    "name": "ARM Indicator",
@@ -50,7 +50,7 @@
     "fred"
    ],
    "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "b41881e1"
+   "hash": "afd44b29"
   },
   {
    "name": "SOFR 30 Avg",
@@ -61,7 +61,7 @@
     "fred"
    ],
    "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "c6037f93"
+   "hash": "c5d0e81b"
   },
   {
    "name": "Lock In",
@@ -72,7 +72,7 @@
     "fred"
    ],
    "sig": "// Rate Lock-In for Scriptable",
-   "hash": "f3394552"
+   "hash": "356c81c7"
   },
   {
    "name": "New Homes",
@@ -83,7 +83,7 @@
     "fred"
    ],
    "sig": "// New Construction for Scriptable",
-   "hash": "8ae2954"
+   "hash": "cbdeef8f"
   },
   {
    "name": "Builder Inputs",
@@ -94,7 +94,7 @@
     "fred"
    ],
    "sig": "// Builder Inputs for Scriptable",
-   "hash": "7eb05a8a"
+   "hash": "6ad6228f"
   },
   {
    "name": "Builder Stocks",
@@ -105,7 +105,7 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "b5a3590a"
+   "hash": "c8bd354e"
   },
   {
    "name": "Existing",
@@ -116,7 +116,7 @@
     "fred"
    ],
    "sig": "// Existing Homes for Scriptable",
-   "hash": "45e64d16"
+   "hash": "ec05c12a"
   },
   {
    "name": "Balance of Power",
@@ -125,7 +125,7 @@
    "about": "Redfin's count of active buyers vs sellers",
    "needs": [],
    "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable",
-   "hash": "f61a937f"
+   "hash": "2f59e3e9"
   },
   {
    "name": "Affordability Gap",
@@ -136,7 +136,7 @@
     "metro"
    ],
    "sig": "// Housing Affordability Gap for Scriptable",
-   "hash": "71247d11"
+   "hash": "cdfbadb1"
   },
   {
    "name": "Payment Change",
@@ -148,7 +148,7 @@
     "metro"
    ],
    "sig": "// Payment vs N Years Ago for Scriptable",
-   "hash": "5e75c73f"
+   "hash": "55f5f48d"
   },
   {
    "name": "Migration",
@@ -159,7 +159,7 @@
     "metro"
    ],
    "sig": "// Metro Migration for Scriptable",
-   "hash": "1d52610d"
+   "hash": "9499e2b9"
   },
   {
    "name": "Redfin Migration",
@@ -170,7 +170,7 @@
     "metro"
    ],
    "sig": "// Redfin Migration for Scriptable",
-   "hash": "276e659c"
+   "hash": "f87440b9"
   },
   {
    "name": "Borrower Credit",
@@ -179,7 +179,7 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "53d7a2f4"
+   "hash": "432386a8"
   },
   {
    "name": "Personal Savings",
@@ -190,7 +190,7 @@
     "fred"
    ],
    "sig": "// Personal Saving Rate Widget for Scriptable (small widget)",
-   "hash": "18bc1cab"
+   "hash": "aa995793"
   },
   {
    "name": "Sentiment",
@@ -201,7 +201,7 @@
     "fred"
    ],
    "sig": "// Consumer Sentiment Widget for Scriptable (small widget)",
-   "hash": "4286e881"
+   "hash": "ec186d31"
   },
   {
    "name": "Unemployment",
@@ -212,7 +212,7 @@
     "fred"
    ],
    "sig": "// Unemployment Rate Widget for Scriptable (small widget)",
-   "hash": "b79f3f30"
+   "hash": "39086fc6"
   },
   {
    "name": "Chartbook",
@@ -221,7 +221,7 @@
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA, HUD, Fed, builder 10-Qs) with Listen",
    "needs": [],
    "sig": "// Reports Widget (small): a release calendar for the industry reports you",
-   "hash": "bc0add4"
+   "hash": "9d690628"
   }
  ]
 }

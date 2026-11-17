@@ -44,6 +44,16 @@ async function fetchText(url) {
 }
 function kcHas(k) { try { return Keychain.contains(k) && !!Keychain.get(k); } catch (e) { return false; } }
 
+// Scriptable keeps a script's icon in its first lines; those belong to the phone, not to GitHub
+const HEADER_LINE = /^\/\/ (Variables used by Scriptable|These must be at the (very )?top|icon-color:)/;
+function headerOf(src) {
+  const out = [];
+  for (const ln of src.replace(/\r\n/g, "\n").split("\n")) { if (HEADER_LINE.test(ln)) out.push(ln); else break; }
+  return out.length ? out.join("\n") + "\n" : "";
+}
+function withoutHeader(src) { const h = headerOf(src); return src.replace(/\r\n/g, "\n").slice(h.length); }
+function codeOf(src, sig) { const t = src.replace(/\r\n/g, "\n"), i = sig ? t.indexOf(sig) : -1; return (i >= 0 ? t.slice(i) : withoutHeader(t)).replace(/\s+$/, ""); }
+
 // keys typed into older copies go to the keychain before the copy is replaced
 function rescueKeys(src, saved) {
   const f = src.match(/const FRED_KEY = "([0-9a-f]{32})"/);
@@ -126,9 +136,11 @@ async function worker() {
     for (const n of p.targets) {
       const path = fm.joinPath(dir, n);
       const cur = p.isNew ? "" : await textOf(n);
-      if (cur === src) { results.same.push(p.item.title); continue; }
+      // compare the code from the title line down: Scriptable rewrites the icon lines at the top itself
+      if (cur && codeOf(cur, p.item.sig) === codeOf(src, p.item.sig)) { results.same.push(p.item.title); continue; }
       if (cur) rescueKeys(cur, saved);
-      fm.writeString(path, src);
+      // keep this phone's own icon color and glyph
+      fm.writeString(path, cur ? headerOf(cur) + withoutHeader(src) : src);
       if (n === self) selfUpdated = true;
       const nm = n.replace(/\.js$/, "");
       (p.isNew ? results.added : results.updated).push(p.item.title + (nm.toLowerCase() === p.item.name.toLowerCase() ? "" : p.isNew ? " (saved as \"" + nm + "\")" : " (your \"" + nm + "\")"));
