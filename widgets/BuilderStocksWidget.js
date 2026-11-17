@@ -599,6 +599,9 @@ window.onerror = function (m, src, line) { window.__drawn = true; var e = docume
   h1 { font-size:28px; font-weight:700; margin:4px 0 2px; }
   .lede { color:#98989F; font-size:13.5px; }
   #status { color:#64D2FF; font-size:13px; font-weight:600; min-height:17px; margin-top:4px; }
+  #busy { display:none; position:relative; height:3px; border-radius:2px; background:#3A3A3C; overflow:hidden; margin-top:6px; }
+  #busy:after { content:""; position:absolute; top:0; bottom:0; left:-40%; width:40%; border-radius:2px; background:#64D2FF; animation:busy 1.2s ease-in-out infinite; }
+  @keyframes busy { 0% { left:-40%; } 100% { left:100%; } }
   #errs { color:#FF9F0A; font-size:12px; }
   .sched { background:#2C2C2E; border-radius:12px; padding:8px 12px; margin:10px 0 14px; }
   .sr { padding:6px 0; border-top:1px solid #3A3A3C; font-size:12.5px; }
@@ -634,6 +637,7 @@ window.onerror = function (m, src, line) { window.__drawn = true; var e = docume
   <h1>Builder Stocks</h1>
   <div class="lede" id="lede"></div>
   <div id="status"></div>
+  <div id="busy"></div>
   <div id="errs"></div>
   <div class="sched" id="earn"></div>
   <div class="sched" id="sched"></div>
@@ -691,7 +695,7 @@ function color(p) {
 }
 function money(v) { if (v == null) return "–"; return v >= 1e9 ? "$" + (v / 1e9).toFixed(v >= 1e10 ? 1 : 2) + "B" : "$" + (v / 1e6).toFixed(0) + "M"; }
 function price(v) { return "$" + (v >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(2)); }
-window.setStatus = function (t) { el("status").textContent = t || ""; };
+window.setStatus = function (t) { el("status").textContent = t || ""; el("busy").style.display = t && t.indexOf("…") >= 0 ? "block" : "none"; };
 
 // Earnings calls: the next ones first, then each builder's last (tap for replay or listen)
 function renderEarn() {
@@ -1092,7 +1096,8 @@ function preparedRemarks(text) {
   return capText(body);
 }
 // Lennar posts its transcripts as PDFs; for the rest, Motley Fool's free transcript page
-async function findTranscript(t, at) {
+async function findTranscript(t, at, step) {
+  step = step || (() => {});
   const d = new Date(at), y = d.getFullYear(), yy = String(y).slice(2);
   // all the candidate addresses at once; the first in this (newest-first) order that answers wins
   const firstHit = async (cands, test) => {
@@ -1100,6 +1105,7 @@ async function findTranscript(t, at) {
     return res.find((x) => x) || null;
   };
   if (t === "LEN") {
+    step("Checking Lennar's transcripts…");
     const tags = [];
     for (const fy of [y, y + 1]) for (let q = 4; q >= 1; q--) tags.push(`q${q}-${fy}`, `q${q}-${String(fy).slice(2)}`);
     const hit = await firstHit(tags, async (tag) => {
@@ -1110,6 +1116,7 @@ async function findTranscript(t, at) {
       return data && data.toBase64String().startsWith("JVBERi") ? { tag, data } : null;
     });
     if (hit) {
+      step("Reading Lennar's transcript…");
       const path = fm().joinPath(fm().temporaryDirectory(), `len-${hit.tag}.pdf`);
       fm().write(path, hit.data);
       const o = await runPdfReader(path, "extractAll");
@@ -1118,6 +1125,7 @@ async function findTranscript(t, at) {
     }
   }
   if (t === "GRBK") {
+    step("Checking Green Brick's transcripts…");
     // Green Brick posts its transcripts as PDFs; the quarter the call covers ended about 1 to 2 months before it
     const q0 = new Date(at - 40 * 864e5), eq = Math.floor(q0.getMonth() / 3) + 1, ey = q0.getFullYear();
     const qs = [[ey, eq], eq === 1 ? [ey - 1, 4] : [ey, eq - 1], eq === 4 ? [ey + 1, 1] : [ey, eq + 1]];
@@ -1134,6 +1142,7 @@ async function findTranscript(t, at) {
       return data && data.toBase64String().startsWith("JVBERi") ? { tag: c.tag, data } : null;
     });
     if (hit) {
+      step("Reading Green Brick's transcript…");
       const path = fm().joinPath(fm().temporaryDirectory(), `grbk-${hit.tag.replace(" ", "-")}.pdf`);
       fm().write(path, hit.data);
       const o = await runPdfReader(path, "extractAll");
@@ -1141,9 +1150,11 @@ async function findTranscript(t, at) {
       if (text.length > 2000) return { text, src: `Green Brick's transcript (${hit.tag})` };
     }
   }
+  step("Checking Motley Fool…");
   const fool = await foolTranscript(t, at, firstHit);
   if (fool) return fool;
-  return yahooTranscript(t, at);
+  step("Checking Yahoo Finance…");
+  return yahooTranscript(t, at, step);
 }
 // Motley Fool's free transcript page, when it has one for this call
 async function foolTranscript(t, at, firstHit) {
@@ -1194,7 +1205,8 @@ async function hiddenPageText(url) {
   }
   try { return String((await wv.evaluateJavaScript("document.body ? document.body.innerText : ''")) || ""); } catch (e) { return ""; }
 }
-async function yahooTranscript(t, at) {
+async function yahooTranscript(t, at, step) {
+  step = step || (() => {});
   let list;
   try { list = await getText(`https://finance.yahoo.com/quote/${t}/earnings-calls/`); } catch (e) { return null; }
   if (!list || list.code >= 400 || !list.txt) return null;
@@ -1207,6 +1219,7 @@ async function yahooTranscript(t, at) {
   const forms = dateForms(at), anyDate = new RegExp(`(${MONTHS.join("|")}) \\d{1,2}, 20\\d\\d`);
   // newest first; use one only if it's dated on this call (or, the newest, if the page shows no date at all)
   for (let k = 0; k < Math.min(2, links.length); k++) {
+    step(`Reading Yahoo's Q${links[k].q} transcript…`);
     const L = links[k], text = await hiddenPageText(L.u);
     if (text.length < 5000) continue;
     // judge the date from the transcript's own heading, not the news around it
@@ -1226,7 +1239,7 @@ async function bertVoice(s, key) {
   } catch (e) {}
   return chooseVoice(s, key);
 }
-async function listenRemarks(s, t, at, tr) {
+async function listenRemarks(s, t, at, tr, say) {
   const text = preparedRemarks(tr.text);
   if (!text || text.length < 500) throw new Error("Couldn't find the prepared remarks in the transcript.");
   const key = s.iphoneVoice ? null : await getKey();
@@ -1235,24 +1248,41 @@ async function listenRemarks(s, t, at, tr) {
   if (!voice) return;
   const path = fm().joinPath(fm().documentsDirectory(), `call-${t}-${new Date(at).toISOString().slice(0, 10)}-${voice.id.slice(0, 8)}.mp3`);
   if (!fm().fileExists(path)) {
+    const pr = say ? progress(say) : null;
+    if (pr) pr.set(`Recording the prepared remarks with ${voice.name} (usually 1–2 minutes)…`);
     try { fm().write(path, await elevenLabs(text, key, voice.id)); } catch (e) {
+      if (pr) await pr.stop();
       if (outOfCredits(e)) return creditsAlert(e, text);
       if (keyProblem(e)) { await askKey(true); return; }
       throw e;
     }
+    if (pr) await pr.stop();
   }
   await playAudio(path);
+}
+// A status line that counts the seconds on the current step, so a slow step looks busy, not stuck
+function progress(say) {
+  let label = "", t0 = Date.now(), on = true;
+  const loop = (async () => {
+    while (on) {
+      if (label) await say(`${label} ${Math.round((Date.now() - t0) / 1000)}s`);
+      await sleep(1000);
+    }
+  })();
+  return { set(l) { label = l; t0 = Date.now(); }, async stop() { on = false; await loop; await say(""); } };
 }
 // A tapped call: what can be found, offered in order
 async function openCall(s, t, which, say) {
   const e = (s.earn || {})[t] || {}, at = which === "next" ? e.next : e.last;
   const name = (CANDIDATES.find((c) => c.t === t) || {}).name || t;
-  await say(`Looking for ${t}'s ${which === "next" ? "webcast" : "replay and transcript"}…`);
-  const [rp, tr] = await Promise.all([findReplay(t), which === "last" && at ? findTranscript(t, at) : Promise.resolve(null)]);
-  await say("");
+  const pr = progress(say);
+  pr.set(`Looking for ${t}'s ${which === "next" ? "webcast" : "replay and transcript"}…`);
+  let rp, tr;
+  try { [rp, tr] = await Promise.all([findReplay(t), which === "last" && at ? findTranscript(t, at, (l) => pr.set(l)) : Promise.resolve(null)]); }
+  finally { await pr.stop(); }
   const opts = [];
   if (rp.replay) opts.push(["▶︎ " + (which === "next" ? "Webcast" : "Replay (webcast)"), () => Safari.openInApp(rp.replay, false)]);
-  if (tr) opts.push(["\u{1F3A7} Listen: prepared remarks (" + (voiceLabel(s) === "iPhone voice" ? "iPhone voice" : voiceName(s)) + ")", () => listenRemarks(s, t, at, tr)]);
+  if (tr) opts.push(["\u{1F3A7} Listen: prepared remarks (" + (voiceLabel(s) === "iPhone voice" ? "iPhone voice" : voiceName(s)) + ")", () => listenRemarks(s, t, at, tr, say)]);
   const what = which === "next" ? "webcast" : "replay";
   opts.push([rp.irUrl ? "Investor relations page" : `Search the web for the ${what}`, () => Safari.openInApp(rp.irUrl ? rp.irUrl : `https://www.google.com/search?q=${encodeURIComponent(name + " earnings call " + what + " " + (at ? new Date(at).getFullYear() : ""))}`, false)]);
   const w = at ? callWhen(at, which === "next" ? e.nextCall : null, which === "next" ? e.nextEst : e.lastEst) : null;
