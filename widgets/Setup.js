@@ -11,7 +11,7 @@
 //   FRED API key        needed by most widgets (free, takes 2 minutes)
 //   Name and email      the SEC asks for these on its data requests
 //                       (builder filings in Chartbook and Builder Stocks)
-//   ElevenLabs key      optional: natural-voice "Listen" in Chartbook and
+//   ElevenLabs key      optional: natural-voice "Listen" for earnings calls in
 //                       Builder Stocks (without it, the iPhone voice reads)
 //   Voice name          the ElevenLabs voice to use (default Bert)
 //   Home metro          the metro the map and metro widgets open on
@@ -122,7 +122,7 @@ async function editEleven() {
   a.title = "ElevenLabs key (optional)";
   a.message = cur
     ? "Saved ✓ (" + ends(cur) + "). It's in this phone's keychain, so you never need to remember it. If you need it on another phone, copy it here."
-    : "Lets Chartbook and Builder Stocks read aloud in a natural voice. Without it, the iPhone voice reads instead. Get a key at elevenlabs.io → Settings → API Keys.";
+    : "Lets Builder Stocks read earnings calls aloud in a natural voice. Without it, the iPhone voice reads instead. Get a key at elevenlabs.io → Settings → API Keys.";
   if (cur) { a.addAction("Copy key to clipboard"); a.addAction("Replace with a new key"); a.addDestructiveAction("Remove"); }
   else { a.addAction("Paste a key"); a.addAction("Get a key (opens Safari)"); }
   a.addCancelAction("Cancel");

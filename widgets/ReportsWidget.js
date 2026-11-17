@@ -26,8 +26,8 @@ function setting(key, fallback) {
 // Cover: the next book due, and the last 2 released (blue dot = not opened yet).
 // Tap: the schedule. Each book's next release, and its last 2 editions. Tap an
 // edition to read its PDF (downloaded the first time, then kept; the viewer's
-// share button saves it to Files). Books written in sentences can also be
-// read aloud (Listen). Only the newest 2 editions of each book are kept.
+// share button saves it to Files). Only the newest 2 editions of each book
+// are kept.
 //
 // Next-release dates: the Beige Book's come from the Fed's published calendar.
 // The rest are estimates from each book's past timing (the day of the month
@@ -141,17 +141,6 @@ const BUILDERS = [
   { t: "TOL", name: "Toll Brothers", short: "Toll", cik: "0000794170", q: "net signed contracts" },
 ];
 
-// Listen: reads a report's written sections aloud with ElevenLabs.
-// The voice is picked in the app (first Listen, or "Choose voice" at the
-// bottom of the schedule) from the voices in your ElevenLabs account.
-const TTS_MODEL = "eleven_multilingual_v2"; // "eleven_flash_v2_5" uses about half the credits
-const MAX_LISTEN_CHARS = 7000; // about 8 minutes; longer text stops at a sentence break
-const KEY_NAME = "elevenlabs_api_key"; // where the key lives in the phone's keychain
-// The first Listen asks for your ElevenLabs API key and saves it in the
-// phone's keychain. (You can also paste it between these quotes; it's then
-// copied to the keychain too. This file syncs through iCloud Drive, so a key
-// typed here travels with it.)
-const ELEVENLABS_KEY = "";
 
 const GREEN = "#30D158";
 const RED = "#FF453A";
@@ -218,6 +207,27 @@ const safeKey = (k) => String(k).replace(/[^\w-]/g, "");
 function shortErr(e) {
   const m = String((e && e.message) || e || "unknown error");
   return /offline|internet connection|network connection|timed out|could not connect|hostname/i.test(m) ? "no connection" : m.slice(0, 120);
+}
+
+async function choose(title, message, actions) {
+  const a = new Alert();
+  a.title = title;
+  a.message = message;
+  actions.forEach((x) => a.addAction(x));
+  a.addCancelAction("Cancel");
+  return a.presentSheet();
+}
+function decodeHtml(x) {
+  return x
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&(?:rsquo|lsquo|#8217|#8216|#39);/g, "'")
+    .replace(/&(?:rdquo|ldquo|quot|#8220|#8221);/g, '"')
+    .replace(/&(?:ndash|#8211|mdash|#8212);/g, ", ")
+    .replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n))
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // ---------- Store ----------
@@ -626,11 +636,11 @@ function builderNext(st) {
 // ---------- The books ----------
 // monthlyNext([months after the edition's month, first day, last day]): the usual window
 const BOOKS = [
-  { id: "ginnie", name: "Ginnie Mae Global Markets Analysis", short: "Ginnie GMAR", src: "Ginnie Mae", cadence: "monthly", listen: true,
+  { id: "ginnie", name: "Ginnie Mae Global Markets Analysis", short: "Ginnie GMAR", src: "Ginnie Mae", cadence: "monthly",
     find: (have) => scan(have, monthsBack(0), pdfAt((p) => ginnieUrls(p.y, p.m))), next: monthlyNext([1, 1, 25]) },
-  { id: "urban", name: "Urban Housing Finance at a Glance", short: "Urban chartbook", src: "Urban Institute", cadence: "monthly", listen: true,
+  { id: "urban", name: "Urban Housing Finance at a Glance", short: "Urban chartbook", src: "Urban Institute", cadence: "monthly",
     find: (have) => scan(have, monthsBack(0), probeUrban), next: monthlyNext([0, 10, 28]) },
-  { id: "ice", name: "ICE Mortgage Monitor", short: "ICE Monitor", src: "ICE", cadence: "monthly", listen: true,
+  { id: "ice", name: "ICE Mortgage Monitor", short: "ICE Monitor", src: "ICE", cadence: "monthly",
     find: (have) => scan(have, monthsBack(0), probeIce), next: monthlyNext([0, 1, 14]) },
   // Fannie and MBA each put out two forecasts on the same day: one book each,
   // found by the first, and tapping an edition asks which PDF
@@ -642,13 +652,13 @@ const BOOKS = [
     find: (have) => scan(have, monthsBack(0), pdfAt(mbaUrls("mortgage-finance-forecast"))), next: monthlyNext([0, 10, 22]) },
   { id: "hud", name: "HUD FHA Loan Performance Trends", short: "HUD FHA", src: "HUD", cadence: "monthly",
     find: findHud, next: hudNext },
-  { id: "beige", name: "Fed Beige Book", short: "Beige Book", src: "Federal Reserve Board", cadence: "8 a year", listen: true,
+  { id: "beige", name: "Fed Beige Book", short: "Beige Book", src: "Federal Reserve Board", cadence: "8 a year",
     find: findBeige, next: beigeNext },
-  { id: "hhdc", name: "NY Fed Household Debt and Credit", short: "NY Fed debt", src: "New York Fed", cadence: "quarterly", listen: true,
+  { id: "hhdc", name: "NY Fed Household Debt and Credit", short: "NY Fed debt", src: "New York Fed", cadence: "quarterly",
     find: (have) => scan(have, quartersBack(), pdfAt(hhdcUrls)), next: hhdcNext },
 ].concat(BUILDERS.map((b) => ({
   id: `b-${b.t}`, name: `${b.name} earnings release`, short: `${b.short} results`, src: "SEC filing (8-K)", cadence: "quarterly",
-  listen: true, kind: "html", builder: b, find: (have, st) => findBuilder(b, have, st), next: builderNext,
+  kind: "html", builder: b, find: (have, st) => findBuilder(b, have, st), next: builderNext,
 })));
 const bookById = (id) => BOOKS.find((b) => b.id === id);
 
@@ -675,17 +685,14 @@ function mergeEds(s, id, have, found) {
   eds = eds.filter((e, i) => !e.url || !eds.slice(i + 1).some((o) => o.url === e.url));
   return eds.slice(0, KEEP);
 }
-// Remove saved PDFs and recordings of editions that dropped off
+// Remove saved PDFs of editions that dropped off
 function prune(id, eds) {
   try {
     const keep = new Set(eds.map((e) => safeKey(e.key)));
     for (const f of fm().listContents(fm().documentsDirectory())) {
       const rest = f.startsWith(`book-${id}-`) && f.endsWith(".pdf") ? f.slice(`book-${id}-`.length, -4) : null;
       if (rest !== null && !keep.has(rest) && !keep.has(rest.replace(/-[a-z]$/, ""))) fm().remove(docPath(f));
-      if (f.startsWith(`listen-${id}-`) && f.endsWith(".mp3")) {
-        const k = f.slice(`listen-${id}-`.length, -4).replace(/-[^-]{1,8}$/, "");
-        if (!keep.has(k)) fm().remove(docPath(f));
-      }
+      if (f.startsWith("listen-") && f.endsWith(".mp3")) fm().remove(docPath(f)); // read-aloud recordings from older versions
     }
   } catch (e) {}
 }
@@ -995,385 +1002,12 @@ async function ensurePdf(book, ed, part) {
   return path;
 }
 
-// ---------- Listen ----------
-// ---------- Listen ----------
-// Only the written sentences are read; tables, chart labels, headers and
-// footnotes are skipped. A sentence counts as written text when it is long
-// enough and mostly words rather than numbers.
-function sentencesOf(text) {
-  // drop heading-like lines first (short, no closing punctuation), so a page
-  // header doesn't glue itself onto the first sentence
-  const lines = text.replace(/(\w)-\n(\w)/g, "$1$2").split("\n")
-    .filter((l) => !/global markets? analysis report/i.test(l))
-    .filter((l) => l.trim().split(/\s+/).length >= 8 || /[.!?]["')\]]*\s*$/.test(l.trim()));
-  // a sentence ends at . ! or ? followed by a space and a capital (so "1.0 percent"
-  // and "$50.1 trillion" stay whole); bullets are dropped
-  return lines.join(" ").replace(/[\u2022\u25AA\u25CF\u2013\u2014]\s*/g, (c) => (/[\u2013\u2014]/.test(c) ? ", " : ""))
-    .replace(/\s+/g, " ")
-    .replace(/([.!?]["')\]\u201D\u2019]*)\s+(?=["'(\[\u201C\u2018]?[A-Z0-9$])/g, "$1\u0001")
-    .split("\u0001")
-    .map((x) => x.trim())
-    .filter((x) => /[.!?]["')\]\u201D\u2019]*$/.test(x));
-}
-function isProse(sen) {
-  const words = sen.split(/\s+/);
-  if (words.length < 10) return false;
-  if (/^(source|sources|note|notes)\b/i.test(sen)) return false;
-  if (/global markets? analysis report|office of capital markets|ginniemae\.gov/i.test(sen)) return false;
-  const chars = sen.replace(/\s/g, "");
-  const letters = (chars.match(/[A-Za-z]/g) || []).length;
-  return letters / chars.length >= 0.7;
-}
-function spokenMonth(key) {
-  const [y, m] = key.split("-").map(Number);
-  return `${MONTH_NAMES[m - 1].replace(/^./, (c) => c.toUpperCase())} ${y}`;
-}
-function capText(text) {
-  if (text.length <= MAX_LISTEN_CHARS) return text;
-  const cut = text.slice(0, MAX_LISTEN_CHARS);
-  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "));
-  return cut.slice(0, end > 0 ? end + 1 : MAX_LISTEN_CHARS) + " That's the end of this reading.";
-}
-function ginnieScript(pages, key) {
-  const seen = new Set();
-  const out = [];
-  for (const page of pages) {
-    for (const sen of sentencesOf(page)) {
-      if (!isProse(sen) || seen.has(sen)) continue;
-      seen.add(sen);
-      out.push(sen);
-    }
-  }
-  if (!out.length) return null;
-  return capText(`Ginnie Mae Global Markets Analysis Report, ${spokenMonth(key)}. ` + out.join(" "));
-}
-function decodeHtml(x) {
-  return x
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;|&#160;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&(?:rsquo|lsquo|#8217|#8216|#39);/g, "'")
-    .replace(/&(?:rdquo|ldquo|quot|#8220|#8221);/g, '"')
-    .replace(/&(?:ndash|#8211|mdash|#8212);/g, ", ")
-    .replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n))
-    .replace(/\s+/g, " ")
-    .trim();
-}
-// Urban's edition page: the "what stood out most" highlights, plus the
-// special-feature sentence when there is one
-// Urban's PDF, front to back: the opening summary, then each chart page's
-// commentary, skipping the About box, staff list, contents, notes and sources
-const URBAN_SKIP = /about the chartbook|housing finance policy center (is|was|works)|urban institute is|copyright|all rights reserved|funders|views expressed|sign up|subscribe|this chartbook (is|was) (made|produced|supported)|we are grateful|board of trustees/i;
-function urbanPdfScript(pages, key) {
-  const seen = new Set();
-  const out = [];
-  for (const page of pages) {
-    const head = page.slice(0, 300);
-    if (/\bcontents\b/i.test(head) && /\.{4,}|\s\d{1,2}\s*\n/.test(page)) continue; // table of contents
-    for (const sen of sentencesOf(page)) {
-      if (!isProse(sen) || URBAN_SKIP.test(sen) || seen.has(sen)) continue;
-      seen.add(sen);
-      out.push(sen.replace(/\s*\((?:p\.|pp?\.|pages?)\s*\d+[^)]*\)/gi, ""));
-    }
-  }
-  if (out.length < 3) return null;
-  return capText(`Urban Institute, Housing Finance at a Glance, ${spokenMonth(key)}. ` + out.join(" "));
-}
-async function urbanFromPdf(book, ed) {
-  if (!ed.url) return null;
-  const path = await ensurePdf(book, ed);
-  return urbanPdfScript((await runPdfReader(path, "extractAll")).pages || [], ed.key);
-}
-// Fallback: the highlights on Urban's web page for the edition
-async function urbanScript(ed) {
-  const page = await getPage(ed.pageUrl);
-  const html = page.body;
-  const items = [];
-  const at = html.search(/stood out most/i);
-  if (at >= 0) {
-    const end = html.indexOf("</ul>", at);
-    const block = html.slice(at, end > at ? end : at + 8000);
-    const re = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-    let m;
-    while ((m = re.exec(block))) {
-      // "(Page 8)" style references don't read well aloud
-      const t = decodeHtml(m[1]).replace(/\s*\((?:p\.|pp?\.|pages?)\s*\d+[^)]*\)/gi, "").trim();
-      if (t) items.push(/[.!?]$/.test(t) ? t : t + ".");
-    }
-  }
-  const text = decodeHtml(html);
-  const sf = /This month the chartbook includes[^.]+\./i.exec(text);
-  if (!items.length && !sf) return null;
-  return capText(
-    `Urban Institute, Housing Finance at a Glance, ${spokenMonth(ed.key)}. Here's what stood out this month. ` +
-    items.join(" ") + (sf ? " " + sf[0] : "")
-  );
-}
-
-// The key to use: the one pasted at the top of the script, else the saved one,
-// else ask
-async function getKey() {
-  if (ELEVENLABS_KEY.trim()) {
-    // keep a copy in the keychain, so future versions of the script (with this
-    // line blank) still have it
-    Keychain.set(KEY_NAME, ELEVENLABS_KEY.trim());
-    return ELEVENLABS_KEY.trim();
-  }
-  return Keychain.contains(KEY_NAME) ? Keychain.get(KEY_NAME) : askKey(false);
-}
-async function askKey(again) {
-  if (ELEVENLABS_KEY.trim()) {
-    if (again) throw new Error("ElevenLabs rejected the key pasted at the top of the script. Check it was copied in full, between the quotes.");
-    return ELEVENLABS_KEY.trim();
-  }
-  const a = new Alert();
-  a.title = again ? "That key didn't work" : "ElevenLabs API key";
-  a.message = "Paste your ElevenLabs API key (for Listen). It's saved in this phone's keychain, stays there when you update the script, and is only sent to ElevenLabs. Cancel to skip for now.";
-  a.addSecureTextField("API key", "");
-  a.addAction("Save");
-  a.addCancelAction("Cancel");
-  if ((await a.present()) === -1) return null;
-  const k = a.textFieldValue(0).trim();
-  if (!k) return null;
-  Keychain.set(KEY_NAME, k);
-  return k;
-}
-
-// Text in, MP3 out. Throws with the status code so the caller can react.
-async function elevenLabs(text, key, voiceId) {
-  const r = new Request(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`);
-  r.method = "POST";
-  r.timeoutInterval = 180;
-  r.headers = { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" };
-  r.body = JSON.stringify({ text, model_id: TTS_MODEL });
-  const data = await r.load();
-  const code = (r.response && r.response.statusCode) || 0;
-  if (code !== 200) {
-    let msg = "";
-    let status = "";
-    try {
-      const d = JSON.parse(data.toRawString()).detail;
-      msg = typeof d === "string" ? d : (d && (d.message || d.status)) || "";
-      status = (d && d.status) || "";
-    } catch (e) {}
-    const err = new Error(`ElevenLabs said ${code}${msg ? ": " + msg : ""}`);
-    err.code = code;
-    err.status = status;
-    err.detail = msg;
-    throw err;
-  }
-  return data;
-}
-
-// The voices in your ElevenLabs account (yours, cloned, and any you've
-// added from the Voice Library), or null if the key can't list them
-async function accountVoices(key) {
-  const r = new Request("https://api.elevenlabs.io/v1/voices");
-  r.headers = { "xi-api-key": key };
-  r.timeoutInterval = 20;
-  try {
-    const j = await r.loadJSON();
-    const code = (r.response && r.response.statusCode) || 0;
-    if (code !== 200 || !j || !Array.isArray(j.voices)) return null;
-    return j.voices.map((v) => ({ id: v.voice_id, name: v.name, category: v.category || "" }));
-  } catch (e) {
-    return null;
-  }
-}
-async function pasteVoiceId(note) {
-  const a = new Alert();
-  a.title = "Voice ID";
-  a.message = (note ? note + "\n\n" : "") + "At elevenlabs.io, open the voice and copy its ID, then paste it here.";
-  a.addTextField("Voice ID", "");
-  a.addTextField("Name (optional)", "");
-  a.addAction("Save");
-  a.addCancelAction("Cancel");
-  if ((await a.present()) === -1) return null;
-  const id = a.textFieldValue(0).trim();
-  return id ? { id, name: a.textFieldValue(1).trim() || "Custom voice" } : null;
-}
-// Pick a voice and remember it on this phone
-async function chooseVoice(s, key) {
-  const voices = await accountVoices(key);
-  let picked = null;
-  if (voices && voices.length) {
-    // your own voices first, then the rest, each alphabetical
-    const rank = (c) => (c === "premade" ? 1 : 0);
-    voices.sort((a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name));
-    const a = new Alert();
-    a.title = "Choose a voice";
-    a.message = s.voice ? `Now: ${s.voice.name}` : "";
-    voices.forEach((v) => a.addAction(`${v.name}${v.category && v.category !== "premade" ? "  \u00B7 " + v.category : ""}${s.voice && s.voice.id === v.id ? "  \u2713" : ""}`));
-    a.addAction("Paste a voice ID\u2026");
-    a.addCancelAction("Cancel");
-    const i = await a.presentSheet();
-    if (i === -1) return s.voice || null;
-    picked = i < voices.length ? { id: voices[i].id, name: voices[i].name } : await pasteVoiceId();
-  } else {
-    picked = await pasteVoiceId("Couldn't list your voices (the key may not have Voices read access).");
-  }
-  if (picked) {
-    s.voice = picked;
-    saveStore(s);
-  }
-  return s.voice || null;
-}
-
-async function choose(title, message, actions) {
-  const a = new Alert();
-  a.title = title;
-  a.message = message;
-  actions.forEach((x) => a.addAction(x));
-  a.addCancelAction("Cancel");
-  return a.presentSheet();
-}
-
-async function playAudio(path) {
-  const pick = await choose("Ready", "Play here, or send it to Files or another app to keep listening with the screen off.", ["Play", "Share / Save to Files"]);
-  if (pick === 0) await QuickLook.present(path, true);
-  if (pick === 1) await ShareSheet.present([path]);
-}
-// ---------- Text to read aloud for ICE and builder releases ----------
-// Page HTML to lines of text, keeping paragraph breaks
-function htmlLines(html) {
-  return html
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<\/(p|div|li|h\d|tr|table|section)>|<br\s*\/?>/gi, "\n")
-    .split("\n")
-    .map((l) => decodeHtml(l))
-    .filter(Boolean)
-    // a headline or label line becomes its own sentence instead of gluing onto the next
-    .map((l) => (/[.!?:;"')\]]$/.test(l) ? l : l + "."))
-    .join("\n");
-}
-// Written sentences until the boilerplate starts
-function proseUntil(text, stop) {
-  const cut = text.search(stop);
-  const body = cut > 0 ? text.slice(0, cut) : text;
-  const seen = new Set();
-  const out = [];
-  for (const sen of sentencesOf(body)) {
-    if (!isProse(sen) || seen.has(sen)) continue;
-    seen.add(sen);
-    out.push(sen);
-  }
-  return out;
-}
-async function iceScript(ed) {
-  const page = await getPage(ed.pageUrl);
-  const out = proseUntil(htmlLines(page.body), /About (ICE|Intercontinental)|Forward-Looking Statements|Media Contact|Related Resources/i);
-  if (!out.length) return null;
-  return capText(`ICE Mortgage Monitor, ${spokenMonth(ed.key)}. ` + out.join(" "));
-}
-async function builderScript(b, ed) {
-  const r = new Request(ed.url);
-  r.headers = { "User-Agent": SEC_CONTACT };
-  r.timeoutInterval = 30;
-  const html = await r.loadString();
-  const out = proseUntil(htmlLines(html), /Forward[- ]Looking Statements|Safe Harbor|Conference Call|About (D\.R\. Horton|Lennar|PulteGroup|NVR|Toll Brothers)/i);
-  if (!out.length) return null;
-  const [y, m, d] = ed.published.split("-").map(Number);
-  return capText(`${b.name} earnings release, ${MONTH_NAMES[m - 1].replace(/^./, (c) => c.toUpperCase())} ${d}, ${y}. ` + out.join(" "));
-}
-// Any PDF written in sentences: its prose, front to back
-const GENERIC_SKIP = /copyright|all rights reserved|www\.|https?:|for more information|views expressed/i;
-async function pdfProse(book, ed, intro) {
-  const path = await ensurePdf(book, ed);
-  const pages = (await runPdfReader(path, "extractAll")).pages || [];
-  const seen = new Set(), out = [];
-  for (const page of pages) {
-    for (const sen of sentencesOf(page)) {
-      if (!isProse(sen) || GENERIC_SKIP.test(sen) || seen.has(sen)) continue;
-      seen.add(sen);
-      out.push(sen);
-    }
-  }
-  return out.length < 3 ? null : capText(intro + " " + out.join(" "));
-}
-async function scriptFor(book, ed) {
-  if (book.id === "ginnie") {
-    const path = await ensurePdf(book, ed);
-    return ginnieScript((await runPdfReader(path, "extractAll")).pages || [], ed.key);
-  }
-  if (book.id === "urban") {
-    let t = null;
-    try {
-      t = await urbanFromPdf(book, ed);
-    } catch (e) {}
-    return t || urbanScript(ed);
-  }
-  if (book.id === "ice") return iceScript(ed);
-  if (book.id === "beige") return pdfProse(book, ed, `The Federal Reserve's Beige Book, ${ed.label}.`);
-  if (book.id === "hhdc") return pdfProse(book, ed, `New York Fed Household Debt and Credit Report, ${ed.label}.`);
-  if (book.builder) return builderScript(book.builder, { ...ed, published: ed.posted });
-  return pdfProse(book, ed, `${book.name}, ${ed.label}.`);
-}
-// "Out of credits" and similar come back with the same code as a bad key
-function outOfCredits(e) {
-  return /quota|credits? (remaining|required)|exceeds your|out of credits|insufficient/i.test(`${e.status || ""} ${e.detail || e.message || ""}`);
-}
-async function creditsAlert(e, text) {
-  const m = /have\s+([\d,]+)\s+credits?\s+remaining[^\d]+([\d,]+)\s+credits?\s+(?:are\s+)?required/i.exec(e.detail || e.message || "");
-  const a = new Alert();
-  a.title = "Out of ElevenLabs credits";
-  a.message = (m
-    ? `This reading needs about ${m[2]} credits; you have ${m[1]} left this month.`
-    : `ElevenLabs says you're out of credits for this reading (it needs about ${text.length.toLocaleString("en-US")}).`) +
-    "\n\nCredits reset when your plan renews. Recordings you've already made still play free.";
-  a.addAction("Read it with the iPhone voice");
-  a.addCancelAction("OK");
-  if ((await a.present()) === 0) await Speech.speak(text);
-}
-function keyProblem(e) {
-  return e.code === 401 && !outOfCredits(e) && !/character|unusual|permission|limit/i.test(e.message || "");
-}
-async function listen(s, book, ed) {
-  // Key first (asked once), then the voice (picked once)
-  let key = await getKey();
-  let voice = key ? s.voice || (await chooseVoice(s, key)) : null;
-  const fileFor = (v) => `listen-${book.id}-${safeKey(ed.key)}-${v.id.slice(0, 8)}.mp3`;
-
-  // Made before in this voice: replays free
-  if (voice && fm().fileExists(docPath(fileFor(voice)))) return playAudio(docPath(fileFor(voice)));
-
-  const text = await scriptFor(book, ed);
-  if (!text) throw new Error("Couldn't find written text to read in this edition.");
-
-  for (let attempt = 0; key && voice && attempt < 3; attempt++) {
-    const audioPath = docPath(fileFor(voice));
-    try {
-      const mp3 = await elevenLabs(text, key, voice.id);
-      fm().write(audioPath, mp3);
-      return playAudio(audioPath);
-    } catch (e) {
-      if (outOfCredits(e)) return creditsAlert(e, text);
-      if (keyProblem(e)) {
-        key = await askKey(true);
-        continue;
-      }
-      // e.g. a voice the plan can't use
-      const pick = await choose("ElevenLabs didn't work", `${e.message}\n\nVoice: ${voice.name}`, ["Choose a different voice", "Use the iPhone voice"]);
-      if (pick === 0) {
-        const before = voice.id;
-        voice = await chooseVoice(s, key);
-        if (voice && voice.id !== before) continue;
-        return;
-      }
-      if (pick === 1) await Speech.speak(text);
-      return;
-    }
-  }
-  // No key or no voice: the free iPhone voice
-  const pick = await choose(key ? "No voice picked" : "No ElevenLabs key", "Read it with the iPhone voice instead?", ["iPhone voice"]);
-  if (pick === 0) await Speech.speak(text);
-}
-
 // ---------- The schedule page ----------
 function payload(s) {
   const rows = ordered(s).map((x) => {
     const L = nextLines(x);
     return {
-      id: x.book.id, name: x.book.name, src: x.book.src, cadence: x.book.cadence, listen: !!x.book.listen,
+      id: x.book.id, name: x.book.name, src: x.book.src, cadence: x.book.cadence,
       main: L.main, sub: L.sub, tone: L.tone, why: L.why || "", group: x.kind === "due" || x.kind === "late" ? "due" : x.kind,
       eds: x.st.eds.map((e) => ({
         // a release labeled by its own date doesn't repeat it
@@ -1385,10 +1019,9 @@ function payload(s) {
   const checked = Math.max(0, ...BOOKS.map((b) => (s.books[b.id] && s.books[b.id].checked) || 0));
   return {
     rows, checked: checked ? ago(checked) : "",
-    voice: s.voice ? s.voice.name : "", keyInScript: !!ELEVENLABS_KEY.trim(), sec: !!SEC_CONTACT,
+    sec: !!SEC_CONTACT,
     note: "Each book is checked every " + CHECK_HOURS + " hours and each time you open this. Next-release dates: the Beige Book's are from the Fed's calendar. The rest (est.) are estimated from each book's last release (the same day of the month), or its usual window when that date isn't known; builders from the date of the same quarter's release a year earlier. " +
-      "Only each book's newest 2 editions are kept on this phone. A builder release is its SEC filing, laid out as a PDF on the phone (pictures left out). " +
-      "Listen is offered for books written in sentences; the forecast books and HUD's report are mostly tables.",
+      "Only each book's newest 2 editions are kept on this phone. A builder release is its SEC filing, laid out as a PDF on the phone (pictures left out).",
   };
 }
 
@@ -1460,7 +1093,7 @@ function edHtml(r, e) {
   var sub = (e.posted ? "posted " + e.posted : "") + (e.saved ? (e.posted ? " · " : "") + "on phone" : "");
   if (!sub) sub = "PDF";
   return '<button class="ed' + (e.opened ? "" : " new") + '" data-id="' + esc(r.id) + '" data-key="' + esc(e.key) + '">' +
-    '<i></i><b>' + esc(e.label) + (r.listen ? " · 🎧" : "") + '</b><span class="p">' + esc(sub) + '</span></button>';
+    '<i></i><b>' + esc(e.label) + '</b><span class="p">' + esc(sub) + '</span></button>';
 }
 function cardHtml(r) {
   var h = '<div class="card ' + r.tone + '"><div class="top"><div class="name"><b>' + esc(r.name) + '</b><span>' +
@@ -1488,9 +1121,7 @@ function render() {
   D.rows.forEach(function (r) { r.eds.forEach(function (e) { if (!e.opened) nNew++; }); });
   el("list").innerHTML = h;
   el("lede").textContent = "Release schedule · " + D.rows.length + " books" + (nNew ? " · " + nNew + " unopened" : "") + (D.checked ? " · checked " + D.checked : "");
-  var b = '<button data-a="voice">🎙 Choose voice' + (D.voice ? " (" + esc(D.voice) + ")" : "") + '</button>';
-  if (!D.keyInScript) b += '<button data-a="key">Reset ElevenLabs key</button>';
-  b += '<button data-a="sec">' + (D.sec ? "SEC contact" : "Set SEC contact (for builders)") + '</button>';
+  var b = '<button data-a="sec">' + (D.sec ? "SEC contact" : "Set SEC contact (for builders)") + '</button>';
   el("btns").innerHTML = b;
   el("note").textContent = D.note;
 }
@@ -1518,59 +1149,35 @@ async function showError(title, e) {
   await x.present();
 }
 
-// One request from the page: open an edition, pick a voice, reset the key, set the SEC contact
+// One request from the page: open an edition, set the SEC contact
 async function handle(s, q, say) {
   if (q.a === "open") {
     const book = bookById(q.id), st = s.books[q.id];
     const ed = st && st.eds.find((e) => e.key === q.key);
     if (!book || !ed) return;
-    let how = 0, part = null;
+    let part = null;
     if (book.parts) {
       const pick = await choose(book.name, `${ed.label}${ed.posted && !ed.est ? " · posted " + shortDate(ed.posted) : ""}`, book.parts.map((p) => "\u{1F4D6} " + p.name));
       if (pick === -1) return;
       part = book.parts[pick];
-    } else if (book.listen) {
-      how = await choose(book.name, `${ed.label}${ed.posted && !ed.est ? " · posted " + shortDate(ed.posted) : ""}`, ["\u{1F4D6} Read the PDF", "\u{1F3A7} Listen"]);
-      if (how === -1) return;
     }
     try {
-      if (how === 0) {
-        if (!fm().fileExists(docPath(pdfName(book.id, ed.key, part)))) await say(book.kind === "html" ? `Making the ${book.builder.short} release into a PDF…` : `Downloading ${part ? book.src + " " + part.name : book.short}…`);
-        const path = await ensurePdf(book, ed, part);
-        await say("");
-        await QuickLook.present(path, true);
-      } else {
-        await say(`Getting ${book.short} ready to read aloud…`);
-        await listen(s, book, ed);
-        await say("");
-      }
+      if (!fm().fileExists(docPath(pdfName(book.id, ed.key, part)))) await say(book.kind === "html" ? `Making the ${book.builder.short} release into a PDF…` : `Downloading ${part ? book.src + " " + part.name : book.short}…`);
+      const path = await ensurePdf(book, ed, part);
+      await say("");
+      await QuickLook.present(path, true);
       ed.opened = true;
       s.openedKeys[`${book.id}:${ed.key}`] = true;
       saveStore(s);
     } catch (e) {
       await say("");
-      if (how === 0 && book.kind === "html") {
+      if (book.kind === "html") {
         const pick = await choose("Couldn't make the PDF", `${shortErr(e)}\n\nOpen the SEC page instead?`, ["Open the SEC page"]);
         if (pick === 0) await Safari.openInApp(ed.url, false);
       } else {
-        await showError(how === 1 ? "Listen" : "Read", e);
+        await showError("Read", e);
       }
     }
-  } else if (q.a === "voice") {
-    try {
-      const key = await getKey();
-      if (key) await chooseVoice(s, key);
-    } catch (e) {
-      await showError("Voice", e);
-    }
-  } else if (q.a === "key") {
-    if (Keychain.contains(KEY_NAME)) Keychain.remove(KEY_NAME);
-    const k = await askKey(false);
-    const x = new Alert();
-    x.title = k ? "Key saved" : "Key cleared";
-    x.message = k ? "The new key will be used next time you listen." : "You'll be asked for a key next time you listen.";
-    x.addAction("OK");
-    await x.present();
   } else if (q.a === "sec") {
     const before = SEC_CONTACT;
     await askSecContact();
