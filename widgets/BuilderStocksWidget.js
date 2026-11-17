@@ -944,24 +944,28 @@ async function askSecContact() {
 // call in the app offers, in this order, what can be found: the webcast replay
 // (a webcast link on the builder's investor-relations page), the transcript's
 // prepared remarks read aloud by your ElevenLabs voice "Bert", and the IR page.
+// Each builder's investor relations site. The events page is found by following
+// the site's own Events/Webcasts link, so a redesign doesn't break it.
 const IR = {
-  DHI: "https://investor.drhorton.com/news-and-events/events",
-  LEN: "https://investors.lennar.com/events-and-presentations",
-  PHM: "https://investors.pultegroup.com/events-and-presentations",
-  NVR: "https://www.nvrinc.com/investor-relations",
-  TOL: "https://investors.tollbrothers.com/events-and-presentations",
-  TMHC: "https://investors.taylormorrison.com/events-and-presentations",
-  MTH: "https://investors.meritagehomes.com/events-and-presentations",
-  KBH: "https://investor.kbhome.com/events-and-presentations",
-  DFH: "https://investors.dreamfindershomes.com/events-and-presentations",
-  CCS: "https://investors.centurycommunities.com/events-and-presentations",
-  MHO: "https://ir.mihomes.com/events-and-presentations",
-  TPH: "https://investors.tripointehomes.com/events-and-presentations",
-  GRBK: "https://investors.greenbrickpartners.com/events-and-presentations",
-  LGIH: "https://investor.lgihomes.com/events-and-presentations",
-  BZH: "https://investors.beazer.com/events-and-presentations",
-  HOV: "https://www.khov.com/investor-relations",
+  DHI: "https://investor.drhorton.com/",
+  LEN: "https://investors.lennar.com/",
+  PHM: "https://pultegroupinc.com/investor-relations/",
+  NVR: "https://nvri.gcs-web.com/",
+  TOL: "https://investors.tollbrothers.com/",
+  TMHC: "https://investors.taylormorrison.com/",
+  MTH: "https://investors.meritagehomes.com/",
+  KBH: "https://investor.kbhome.com/",
+  DFH: "https://investors.dreamfindershomes.com/",
+  CCS: "https://investors.centurycommunities.com/",
+  MHO: "https://investors.mihomes.com/",
+  TPH: "https://investors.tripointehomes.com/",
+  GRBK: "https://investors.greenbrickpartners.com/",
+  LGIH: "https://investor.lgihomes.com/",
+  BZH: "https://ir.beazer.com/",
+  HOV: "https://khov.gcs-web.com/",
 };
+// events pages already confirmed (tried first)
+const IR_EVENTS = { LEN: "https://investors.lennar.com/events-and-presentations" };
 // Motley Fool's transcript pages are named for the company: /2026/07/22/dr-horton-dhi-q3-2026-earnings-call-transcript/
 const FOOL = { DHI: "dr-horton", LEN: "lennar", PHM: "pultegroup", NVR: "nvr", TOL: "toll-brothers", TMHC: "taylor-morrison-home", MTH: "meritage-homes", KBH: "kb-home", DFH: "dream-finders-homes", CCS: "century-communities", MHO: "mi-homes", TPH: "tri-pointe-homes", GRBK: "green-brick-partners", LGIH: "lgi-homes", BZH: "beazer-homes-usa", HOV: "hovnanian-enterprises" };
 const VOICE_NAME = setting("voice_name", "Bert"); // the ElevenLabs voice that reads the calls
@@ -1026,16 +1030,57 @@ async function getText(url, ua) {
 }
 // a webcast link on the builder's IR page (the newest listed)
 const WEBCAST = /href="(https?:\/\/(?:app\.webinar\.net|events\.q4inc\.com|edge\.media-server\.com|event\.choruscall\.com|services\.choruscall\.com|[\w.-]*onlinexperiences\.com|[\w.-]*\.webcasts\.com|viavid\.webcasts\.com|register\.vevent\.com|www\.webcaster4\.com|[\w.-]*\.zoom\.us\/webinar|events\.globalmeet\.com|[\w.-]*notified\.com)[^"]*)"/i;
+function absUrl(href, base) {
+  href = href.replace(/&amp;/g, "&");
+  if (/^https?:/i.test(href)) return href;
+  const origin = base.replace(/^(https?:\/\/[^/]+).*/, "$1");
+  if (href.startsWith("//")) return "https:" + href;
+  if (href.startsWith("/")) return origin + href;
+  return base.replace(/[^/]*$/, "") + href;
+}
+// links on an IR page that lead to its events / webcasts / presentations page, best first
+function eventLinks(html, base) {
+  const out = [], seen = new Set(), re = /<a\b[^>]*href="([^"#]+)"[^>]*>([\s\S]{0,200}?)<\/a>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const href = m[1], text = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (/^(mailto|tel|javascript):/i.test(href) || /\.(pdf|xlsx?|docx?)(\?|$)/i.test(href)) continue;
+    const hay = href + " " + text;
+    const score = /event/i.test(hay) ? 3 : /webcast/i.test(hay) ? 2 : /presentation/i.test(hay) ? 1 : 0;
+    if (!score) continue;
+    const u = absUrl(href, base);
+    if (seen.has(u) || !/^https?:/i.test(u)) continue;
+    seen.add(u);
+    out.push({ u, score });
+  }
+  return out.sort((a, b) => b.score - a.score).map((x) => x.u);
+}
 async function findReplay(t) {
-  const out = { replay: null, irOk: false };
-  for (const u of [IR[t], IR[t] && IR[t].replace(/^(https?:\/\/[^/]+).*/, "$1/")].filter(Boolean)) {
+  const out = { replay: null, irUrl: null };
+  const look = (txt) => { const m = WEBCAST.exec(txt || ""); return m ? m[1].replace(/&amp;/g, "&") : null; };
+  const tryPage = async (u) => {
     try {
       const p = await getText(u);
-      if (p.code >= 400) continue;
-      out.irOk = true;
-      const m = WEBCAST.exec(p.txt);
-      if (m) { out.replay = m[1].replace(/&amp;/g, "&"); return out; }
-    } catch (e) {}
+      if (p.code >= 400 || !p.txt) return null;
+      return p;
+    } catch (e) { return null; }
+  };
+  if (IR_EVENTS[t]) {
+    const p = await tryPage(IR_EVENTS[t]);
+    if (p) { out.irUrl = p.url || IR_EVENTS[t]; out.replay = look(p.txt); if (out.replay) return out; }
+  }
+  if (!IR[t]) return out;
+  const home = await tryPage(IR[t]);
+  if (!home) return out;
+  if (!out.irUrl) out.irUrl = home.url || IR[t];
+  out.replay = look(home.txt);
+  if (out.replay) return out;
+  for (const u of eventLinks(home.txt, home.url || IR[t]).slice(0, 3)) {
+    const p = await tryPage(u);
+    if (!p) continue;
+    out.irUrl = p.url || u; // the events page that actually loaded
+    out.replay = look(p.txt);
+    if (out.replay) return out;
   }
   return out;
 }
@@ -1074,6 +1119,37 @@ async function findTranscript(t, at) {
       if (text.length > 2000) return { text, src: `Lennar's transcript (${hit.tag.toUpperCase()})` };
     }
   }
+  if (t === "GRBK") {
+    // Green Brick posts its transcripts as PDFs; the quarter the call covers ended about 1 to 2 months before it
+    const q0 = new Date(at - 40 * 864e5), eq = Math.floor(q0.getMonth() / 3) + 1, ey = q0.getFullYear();
+    const qs = [[ey, eq], eq === 1 ? [ey - 1, 4] : [ey, eq - 1], eq === 4 ? [ey + 1, 1] : [ey, eq + 1]];
+    const urls = [];
+    qs.forEach(([fy, q]) => {
+      const dir = `https://s202.q4cdn.com/944500558/files/doc_financials/${fy}/q${q}/`;
+      urls.push({ u: dir + `GRBK-Earnings-Call-Transcript-Q${q}-${fy}.pdf`, tag: `Q${q} ${fy}` }, { u: dir + `Green-Brick-Partners-Q${q}-${fy}-Earnings-Call-Transcript.pdf`, tag: `Q${q} ${fy}` });
+    });
+    const hit = await firstHit(urls, async (c) => {
+      const r = new Request(c.u);
+      r.headers = { "User-Agent": UA };
+      r.timeoutInterval = 20;
+      const data = await r.load();
+      return data && data.toBase64String().startsWith("JVBERi") ? { tag: c.tag, data } : null;
+    });
+    if (hit) {
+      const path = fm().joinPath(fm().temporaryDirectory(), `grbk-${hit.tag.replace(" ", "-")}.pdf`);
+      fm().write(path, hit.data);
+      const o = await runPdfReader(path, "extractAll");
+      const text = (o.pages || []).join(" ");
+      if (text.length > 2000) return { text, src: `Green Brick's transcript (${hit.tag})` };
+    }
+  }
+  const fool = await foolTranscript(t, at, firstHit);
+  if (fool) return fool;
+  return yahooTranscript(t, at);
+}
+// Motley Fool's free transcript page, when it has one for this call
+async function foolTranscript(t, at, firstHit) {
+  const y = new Date(at).getFullYear();
   const slug = FOOL[t];
   if (!slug) return null;
   // the page is dated the day of the call (sometimes the day after), for the fiscal quarter
@@ -1092,6 +1168,55 @@ async function findTranscript(t, at) {
       return text.length > 3000 ? { text, src: `Motley Fool transcript (Q${c.q} ${c.fy})` } : null;
     });
     if (hit) return hit;
+  }
+  return null;
+}
+// Yahoo Finance's transcript (from Quartr). The page fills in its text in the
+// browser, so it's opened in a hidden page and read once it has loaded.
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+// the ways a page might write the call's date (a day or two either side)
+function dateForms(ms) {
+  const out = [];
+  for (const off of [-2, -1, 0, 1, 2]) {
+    const d = new Date(ms + off * 864e5), M = MONTHS[d.getMonth()], D = d.getDate(), Y = d.getFullYear(), p = (n) => String(n).padStart(2, "0");
+    out.push(`${M} ${D}, ${Y}`, `${M.slice(0, 3)} ${D}, ${Y}`, `${D} ${M} ${Y}`, `${Y}-${p(d.getMonth() + 1)}-${p(D)}`, `${d.getMonth() + 1}/${D}/${Y}`);
+  }
+  return out;
+}
+async function hiddenPageText(url) {
+  const wv = new WebView();
+  try { await wv.loadURL(url); } catch (e) { return ""; }
+  // wait for the text to fill in; open a "show full transcript" button if the page has one (buttons only, never links)
+  const poke = "(function () { var b = document.querySelectorAll('button'); for (var i = 0; i < b.length; i++) { var x = (b[i].innerText || '').trim(); if (/^(show|view|read)( the)? (full|more|entire|all)( transcript)?$|^(show|read) more$/i.test(x) && !b[i].__hw) { b[i].__hw = 1; try { b[i].click(); } catch (e) {} } } return document.body ? document.body.innerText.length : 0; })()";
+  for (let i = 0; i < 16; i++) {
+    await sleep(800);
+    let n = 0;
+    try { n = await wv.evaluateJavaScript(poke); } catch (e) {}
+    if (n > 15000) break;
+  }
+  try { return String((await wv.evaluateJavaScript("document.body ? document.body.innerText : ''")) || ""); } catch (e) { return ""; }
+}
+async function yahooTranscript(t, at) {
+  let list;
+  try { list = await getText(`https://finance.yahoo.com/quote/${t}/earnings-calls/`); } catch (e) { return null; }
+  if (!list || list.code >= 400 || !list.txt) return null;
+  const re = new RegExp(`/quote/${t}/earnings/${t}-Q(\\d)-(\\d{4})-earnings_call-\\d+\\.html`, "g"), links = [];
+  let m;
+  while ((m = re.exec(list.txt))) {
+    const u = "https://finance.yahoo.com" + m[0];
+    if (!links.some((x) => x.u === u)) links.push({ u, q: m[1], fy: m[2] });
+  }
+  const forms = dateForms(at), anyDate = new RegExp(`(${MONTHS.join("|")}) \\d{1,2}, 20\\d\\d`);
+  // newest first; use one only if it's dated on this call (or, the newest, if the page shows no date at all)
+  for (let k = 0; k < Math.min(2, links.length); k++) {
+    const L = links[k], text = await hiddenPageText(L.u);
+    if (text.length < 5000) continue;
+    // judge the date from the transcript's own heading, not the news around it
+    const hi = text.search(/earnings call/i), head = hi >= 0 ? text.slice(Math.max(0, hi - 1500), hi + 1500) : text.slice(0, 4000);
+    const dated = forms.some((f) => head.includes(f));
+    if (!dated && (k > 0 || anyDate.test(head))) continue;
+    const from = text.search(/(operator|good (morning|afternoon|day)|ladies and gentlemen|hello,? and welcome|thank you for standing by)/i);
+    return { text: from > 0 ? text.slice(from) : text, src: `Yahoo Finance transcript (Q${L.q} FY${L.fy})${dated ? "" : ", date not shown"}` };
   }
   return null;
 }
@@ -1131,7 +1256,7 @@ async function openCall(s, t, which, say) {
   if (rp.replay) opts.push(["▶︎ " + (which === "next" ? "Webcast" : "Replay (webcast)"), () => Safari.openInApp(rp.replay, false)]);
   if (tr) opts.push(["\u{1F3A7} Listen: prepared remarks (" + (voiceLabel(s) === "iPhone voice" ? "iPhone voice" : voiceName(s)) + ")", () => listenRemarks(s, t, at, tr)]);
   const what = which === "next" ? "webcast" : "replay";
-  opts.push([rp.irOk ? "Investor relations page" : `Search the web for the ${what}`, () => Safari.openInApp(rp.irOk ? IR[t] : `https://www.google.com/search?q=${encodeURIComponent(name + " earnings call " + what + " " + (at ? new Date(at).getFullYear() : ""))}`, false)]);
+  opts.push([rp.irUrl ? "Investor relations page" : `Search the web for the ${what}`, () => Safari.openInApp(rp.irUrl ? rp.irUrl : `https://www.google.com/search?q=${encodeURIComponent(name + " earnings call " + what + " " + (at ? new Date(at).getFullYear() : ""))}`, false)]);
   const w = at ? callWhen(at, which === "next" ? e.nextCall : null, which === "next" ? e.nextEst : e.lastEst) : null;
   const msg = (w ? `${w.day}${w.when ? " · " + w.when : ""}` : "") + (!rp.replay ? "\nNo webcast link found on the IR page." : "") + (which === "last" ? (tr ? `\nTranscript: ${tr.src}` : "\nNo transcript found.") : "");
   const i = await choose(`${name} earnings call`, msg, opts.map((o) => o[0]));
