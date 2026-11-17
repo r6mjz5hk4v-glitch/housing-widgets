@@ -101,6 +101,12 @@ const self = module.filename.split("/").pop();
 try { Keychain.set("hw_installer", self.replace(/\.js$/, "")); } catch (e) {} // the widgets' Run Installer button opens this script by name
 
 // ---- ask ----
+// Opened from a widget's "Install this update" button: just that widget, no questions
+const ONLY = String((args && args.queryParameters && args.queryParameters.only) || "");
+const onlyPlan = ONLY ? plan.filter((p) => p.item.file === ONLY && !p.isNew) : [];
+let todo = plan;
+if (onlyPlan.length) todo = onlyPlan;
+else {
 const nNew = plan.filter((p) => p.isNew).length;
 const a = new Alert();
 a.title = "Housing Widgets";
@@ -111,7 +117,6 @@ a.addAction("Pick one…");
 a.addCancelAction("Cancel");
 const choice = await a.present();
 if (choice < 0) return;
-let todo = plan;
 if (choice === 1) {
   const s = new Alert();
   s.title = "Which one?";
@@ -120,6 +125,7 @@ if (choice === 1) {
   const i = await s.presentSheet();
   if (i < 0) return;
   todo = [plan[i]];
+}
 }
 
 // ---- download (a few at a time) and write ----
@@ -161,7 +167,7 @@ if (selfUpdated) msg += "The installer updated itself too.\n\n";
 const needSetup = !kcHas("fred_api_key");
 const done = new Alert();
 done.title = results.failed.length ? "Done, with problems" : "Done ✓";
-done.message = msg.trim() + (needSetup ? "\n\nNext: run Setup to add your free FRED key." : "");
+done.message = msg.trim() + (onlyPlan.length && !results.failed.length ? "\n\nClose " + onlyPlan[0].item.title + " and open it again to use the new version." : "") + (needSetup ? "\n\nNext: run Setup to add your free FRED key." : "");
 if (needSetup) done.addAction("Run Setup now");
 done.addCancelAction("Close");
 if ((await done.present()) === 0 && needSetup) {

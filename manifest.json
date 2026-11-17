@@ -8,7 +8,13 @@
    "about": "Run once: your FRED key, name/email for SEC data, optional ElevenLabs key, home metro",
    "needs": [],
    "sig": "// Setup for the Housing Widgets",
-   "hash": "17371102"
+   "hash": "17371102",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "ElevenLabs key is now just for Builder Stocks' earnings calls."
+    }
+   ]
   },
   {
    "name": "Installer",
@@ -17,7 +23,13 @@
    "about": "Installs and updates everything below (and itself)",
    "needs": [],
    "sig": "// Installer for the Housing Widgets",
-   "hash": "dd04f9ff"
+   "hash": "b440287f",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Keeps each script's own icon color, and can update a single widget from its Update ready button."
+    }
+   ]
   },
   {
    "name": "Mortgage Spread",
@@ -28,7 +40,13 @@
     "fred"
    ],
    "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "75d75bf3"
+   "hash": "a7ed5945",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Rates",
@@ -39,7 +57,13 @@
     "fred"
    ],
    "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate",
-   "hash": "11b26533"
+   "hash": "f8aa6fb9",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "ARM Indicator",
@@ -50,7 +74,13 @@
     "fred"
    ],
    "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "e3bce6da"
+   "hash": "2d93bd5c",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "SOFR 30 Avg",
@@ -61,7 +91,13 @@
     "fred"
    ],
    "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "ab19b61e"
+   "hash": "135060e0",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Lock In",
@@ -72,7 +108,13 @@
     "fred"
    ],
    "sig": "// Rate Lock-In for Scriptable",
-   "hash": "af230dbc"
+   "hash": "2ddd83fe",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "New Homes",
@@ -83,7 +125,13 @@
     "fred"
    ],
    "sig": "// New Construction for Scriptable",
-   "hash": "e159a2b0"
+   "hash": "637840a6",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Builder Inputs",
@@ -94,7 +142,13 @@
     "fred"
    ],
    "sig": "// Builder Inputs for Scriptable",
-   "hash": "1096fa58"
+   "hash": "36155f6a",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Builder Stocks",
@@ -105,7 +159,21 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "3d8b7ea5"
+   "hash": "1198f157",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Finds more earnings-call transcripts (Green Brick's own, Motley Fool, then Yahoo Finance) and opens each builder's real investor relations page."
+    },
+    {
+     "d": "2026-11-17",
+     "t": "Shows progress with a seconds counter while it looks for transcripts and while Listen records."
+    },
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Existing",
@@ -116,7 +184,13 @@
     "fred"
    ],
    "sig": "// Existing Homes for Scriptable",
-   "hash": "23d6657"
+   "hash": "dd0fcb1",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Balance of Power",
@@ -125,7 +199,13 @@
    "about": "Redfin's count of active buyers vs sellers",
    "needs": [],
    "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable",
-   "hash": "7c42766e"
+   "hash": "e72d1444",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Affordability Gap",
@@ -136,7 +216,13 @@
     "metro"
    ],
    "sig": "// Housing Affordability Gap for Scriptable",
-   "hash": "fbb57f9a"
+   "hash": "b94701f4",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Payment Change",
@@ -148,7 +234,13 @@
     "metro"
    ],
    "sig": "// Payment vs N Years Ago for Scriptable",
-   "hash": "9c117e40"
+   "hash": "708c9916",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Migration",
@@ -159,7 +251,13 @@
     "metro"
    ],
    "sig": "// Metro Migration for Scriptable",
-   "hash": "942d7c8c"
+   "hash": "d809b726",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Redfin Migration",
@@ -170,7 +268,13 @@
     "metro"
    ],
    "sig": "// Redfin Migration for Scriptable",
-   "hash": "f2eaaa3c"
+   "hash": "761be23e",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Borrower Credit",
@@ -179,7 +283,13 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "f345b157"
+   "hash": "9a62fb4d",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Personal Savings",
@@ -190,7 +300,13 @@
     "fred"
    ],
    "sig": "// Personal Saving Rate Widget for Scriptable (small widget)",
-   "hash": "d1766a84"
+   "hash": "c932e2da",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Sentiment",
@@ -201,7 +317,13 @@
     "fred"
    ],
    "sig": "// Consumer Sentiment Widget for Scriptable (small widget)",
-   "hash": "282ab6a0"
+   "hash": "51d4bf6e",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Unemployment",
@@ -212,7 +334,13 @@
     "fred"
    ],
    "sig": "// Unemployment Rate Widget for Scriptable (small widget)",
-   "hash": "daf665f3"
+   "hash": "3f1a6e79",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   },
   {
    "name": "Chartbook",
@@ -221,7 +349,17 @@
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA, HUD, Fed, builder 10-Qs)",
    "needs": [],
    "sig": "// Reports Widget (small): a release calendar for the industry reports you",
-   "hash": "171a321a"
+   "hash": "9a9a059c",
+   "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Read-aloud removed: tapping an edition opens its PDF straight away."
+    },
+    {
+     "d": "2026-11-17",
+     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
+    }
+   ]
   }
  ]
 }

@@ -34,7 +34,8 @@ function setting(key, fallback) {
 // When GitHub has a newer version of this widget: a thin yellow glow around the
 // widget face, and an "Update ready" card in the full view with a Run Installer button.
 const UPD_REPO = "r6mjz5hk4v-glitch/housing-widgets";
-const UPD_CACHE = "housing-widgets-update-v2.json"; // v2: fingerprints from the title line down
+const UPD_CACHE = "housing-widgets-update-v3.json"; // v3: fingerprints from the title line down, with update notes
+const UPD_SKIP = "housing-widgets-skipped.json";
 function updHash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); }
 // the code from the title line down: Scriptable rewrites the icon lines above it, so they don't count
 function updBody(src, sig) { const t = src.replace(/\r\n/g, "\n"), i = t.indexOf(sig); return (i >= 0 ? t.slice(i) : t).replace(/\s+$/, ""); }
@@ -49,9 +50,15 @@ async function updFetch(fm, p) {
   r.timeoutInterval = 8;
   const m = await r.loadJSON();
   if (!m || !m.files) throw new Error("no manifest");
-  const c = { at: Date.now(), files: m.files.filter((f) => f.sig && f.hash).map((f) => ({ sig: f.sig, hash: f.hash })) };
+  const c = { at: Date.now(), files: m.files.filter((f) => f.sig && f.hash).map((f) => ({ sig: f.sig, hash: f.hash, file: f.file, title: f.title || f.name || "", notes: (f.notes || []).slice(0, 3) })) };
   fm.writeString(p, JSON.stringify(c));
   return c;
+}
+// "Skip this version": remembered per widget until a newer version appears
+function updSkips(fm) { try { const p = fm.joinPath(fm.documentsDirectory(), UPD_SKIP); if (fm.fileExists(p)) return JSON.parse(fm.readString(p)) || {}; } catch (e) {} return {}; }
+function updSkip() {
+  if (!UPD_INFO) return;
+  try { const fm = FileManager.local(), k = updSkips(fm); k[UPD_INFO.file] = UPD_INFO.hash; fm.writeString(fm.joinPath(fm.documentsDirectory(), UPD_SKIP), JSON.stringify(k)); } catch (e) {}
 }
 async function updCheck(fetchNow) {
   const fm = FileManager.local(), p = fm.joinPath(fm.documentsDirectory(), UPD_CACHE);
@@ -67,9 +74,12 @@ async function updCheck(fetchNow) {
   const src = updOwnSource();
   if (!src) return false;
   const top = src.slice(0, 3000), mine = c.files.find((f) => top.includes(f.sig));
-  return !!mine && mine.hash !== updHash(updBody(src, mine.sig));
+  if (!mine || mine.hash === updHash(updBody(src, mine.sig))) return false;
+  if (updSkips(fm)[mine.file] === mine.hash) return false; // skipped by hand
+  UPD_INFO = mine;
+  return true;
 }
-let UPD_READY = false;
+let UPD_READY = false, UPD_INFO = null;
 try { UPD_READY = await updCheck(config.runsInWidget); } catch (e) {}
 
 // the glow: a hairline at the edge plus fading strokes stepping inward
@@ -97,15 +107,41 @@ function updPage(html) {
   const b = html.indexOf("<body");
   const at = b < 0 ? -1 : html.indexOf(">", b) + 1;
   if (at <= 0) return html;
-  const inst = encodeURIComponent(setting("hw_installer", "Installer"));
-  // a pill floating at the bottom: it never moves the page's own layout; class "hint" keeps it out of PDFs
-  const pill = '<a class="hint" href="scriptable:///run/' + inst + '" style="position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9999;margin:0;display:flex;align-items:center;gap:8px;background:#FFD60A;color:#1C1C1E;border-radius:22px;padding:11px 18px;font:700 14.5px -apple-system,system-ui,sans-serif;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.45);white-space:nowrap">Update ready · Run Installer ›</a>';
-  return html.slice(0, at) + pill + html.slice(at);
+  const info = UPD_INFO || {}, esc = (x) => String(x == null ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const day = (d) => { try { return new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch (e) { return d; } };
+  const notes = (info.notes || []).map((n) => '<div style="margin-top:12px"><div style="color:#8E8E93;font-size:12px">' + esc(day(n.d)) + '</div><div style="color:#FFFFFF;font-size:14.5px;line-height:1.4;margin-top:2px">' + esc(n.t) + "</div></div>").join("")
+    || '<div style="color:#C7C7CC;font-size:14.5px;margin-top:12px">Fixes and improvements.</div>';
+  const run = "scriptable:///run/" + encodeURIComponent(setting("hw_installer", "Installer")) + "?only=" + encodeURIComponent(info.file || "");
+  const hide = "document.getElementById('hwPanel').style.display='none';";
+  const btn = "display:block;text-align:center;border-radius:12px;padding:13px 10px;font-weight:700;font-size:15.5px;text-decoration:none;";
+  // a pill floating at the bottom (it never moves the page's own layout); tapping it slides up the notes and choices.
+  // class "hint" keeps both out of PDFs
+  const ui = '<a id="hwPill" class="hint" href="#" onclick="document.getElementById(\'hwPanel\').style.display=\'flex\';return false;" style="position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9999;margin:0;display:flex;align-items:center;gap:8px;background:#FFD60A;color:#1C1C1E;border-radius:22px;padding:11px 18px;font:700 14.5px -apple-system,system-ui,sans-serif;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.45);white-space:nowrap">Update ready ›</a>'
+    + '<div id="hwPanel" class="hint" onclick="if (event.target === this) { ' + hide + ' }" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;margin:0;background:rgba(0,0,0,.55);align-items:flex-end;font-family:-apple-system,system-ui,sans-serif">'
+    + '<div style="width:100%;box-sizing:border-box;background:#2C2C2E;border-radius:18px 18px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));max-height:80vh;overflow:auto">'
+    + '<div style="color:#FFD60A;font-weight:700;font-size:12.5px;letter-spacing:.05em">UPDATE READY</div>'
+    + '<div style="color:#FFFFFF;font-weight:700;font-size:21px;margin-top:3px">' + esc(info.title || "This widget") + "</div>"
+    + notes
+    + '<a href="' + esc(run) + '" style="' + btn + 'background:#FFD60A;color:#1C1C1E;margin-top:18px">Install this update</a>'
+    + '<div style="display:flex;gap:10px;margin-top:10px">'
+    + '<a href="hwupdate://skip" onclick="' + hide + "document.getElementById('hwPill').style.display='none';\" style=\"" + btn + 'flex:1;background:#3A3A3C;color:#FFFFFF">Skip this version</a>'
+    + '<a href="#" onclick="' + hide + 'return false;" style="' + btn + 'flex:1;background:#3A3A3C;color:#FFFFFF">Not now</a>'
+    + "</div>"
+    + '<div style="color:#8E8E93;font-size:12px;line-height:1.4;margin-top:12px">Installs only this widget; your keys and settings stay. Close and reopen it afterwards. Skipped versions stay hidden until a newer one comes out.</div>'
+    + "</div></div>";
+  return html.slice(0, at) + ui + html.slice(at);
 }
 function updArgs(html, base) { return base === undefined ? [updPage(html)] : [updPage(html), base]; }
 // let the page's Run Installer link open Scriptable
 function updWV(wv) {
-  try { wv.shouldAllowRequest = (req) => { if (/^scriptable:/i.test(req.url)) { Safari.open(req.url); return false; } return true; }; } catch (e) {}
+  try {
+    wv.shouldAllowRequest = (req) => {
+      const u = String((req && req.url) || "");
+      if (/^hwupdate:\/\/skip/i.test(u)) { updSkip(); return false; }
+      if (/^scriptable:/i.test(u)) { Safari.open(u); return false; }
+      return true;
+    };
+  } catch (e) {}
   return wv;
 }
 
