@@ -40,8 +40,12 @@
     "fred"
    ],
    "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "a7ed5945",
+   "hash": "fb1f5d8f",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -57,8 +61,12 @@
     "fred"
    ],
    "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate",
-   "hash": "f8aa6fb9",
+   "hash": "28a884f",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -74,8 +82,12 @@
     "fred"
    ],
    "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "2d93bd5c",
+   "hash": "6ed9f1ba",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -91,8 +103,12 @@
     "fred"
    ],
    "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "135060e0",
+   "hash": "53977e3e",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -108,8 +124,12 @@
     "fred"
    ],
    "sig": "// Rate Lock-In for Scriptable",
-   "hash": "2ddd83fe",
+   "hash": "b6e3d6ac",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -125,8 +145,12 @@
     "fred"
    ],
    "sig": "// New Construction for Scriptable",
-   "hash": "637840a6",
+   "hash": "8465a220",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -142,8 +166,12 @@
     "fred"
    ],
    "sig": "// Builder Inputs for Scriptable",
-   "hash": "36155f6a",
+   "hash": "cda04a08",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -159,8 +187,12 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "1198f157",
+   "hash": "b9b17421",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Finds more earnings-call transcripts (Green Brick's own, Motley Fool, then Yahoo Finance) and opens each builder's real investor relations page."
@@ -168,10 +200,6 @@
     {
      "d": "2026-11-17",
      "t": "Shows progress with a seconds counter while it looks for transcripts and while Listen records."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -184,8 +212,12 @@
     "fred"
    ],
    "sig": "// Existing Homes for Scriptable",
-   "hash": "dd0fcb1",
+   "hash": "4e577793",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -199,8 +231,12 @@
    "about": "Redfin's count of active buyers vs sellers",
    "needs": [],
    "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable",
-   "hash": "e72d1444",
+   "hash": "94bcd6be",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -216,8 +252,12 @@
     "metro"
    ],
    "sig": "// Housing Affordability Gap for Scriptable",
-   "hash": "b94701f4",
+   "hash": "c4f8955a",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -234,8 +274,12 @@
     "metro"
    ],
    "sig": "// Payment vs N Years Ago for Scriptable",
-   "hash": "708c9916",
+   "hash": "ae8a14ac",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -251,8 +295,12 @@
     "metro"
    ],
    "sig": "// Metro Migration for Scriptable",
-   "hash": "d809b726",
+   "hash": "8e7beda0",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -268,8 +316,12 @@
     "metro"
    ],
    "sig": "// Redfin Migration for Scriptable",
-   "hash": "761be23e",
+   "hash": "5a9baf4c",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -283,8 +335,12 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "9a62fb4d",
+   "hash": "fd67eb77",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -300,8 +356,12 @@
     "fred"
    ],
    "sig": "// Personal Saving Rate Widget for Scriptable (small widget)",
-   "hash": "c932e2da",
+   "hash": "400c4a98",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -317,8 +377,12 @@
     "fred"
    ],
    "sig": "// Consumer Sentiment Widget for Scriptable (small widget)",
-   "hash": "51d4bf6e",
+   "hash": "a959efc0",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -334,8 +398,12 @@
     "fred"
    ],
    "sig": "// Unemployment Rate Widget for Scriptable (small widget)",
-   "hash": "3f1a6e79",
+   "hash": "62d9cc13",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -349,8 +417,12 @@
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA, HUD, Fed, builder 10-Qs)",
    "needs": [],
    "sig": "// Reports Widget (small): a release calendar for the industry reports you",
-   "hash": "9a9a059c",
+   "hash": "4414eb3a",
    "notes": [
+    {
+     "d": "2026-11-17",
+     "t": "Checks for updates every 6 hours instead of once a day."
+    },
     {
      "d": "2026-11-17",
      "t": "Read-aloud removed: tapping an edition opens its PDF straight away."

@@ -27,12 +27,13 @@ function setting(key, fallback) {
 // Updates itself: Redfin refreshes the files quarterly; the app checks daily
 // for a new copy and keeps the last good one if anything fails.
 
-// ---- Update check (once a day; one shared request for all the Housing Widgets) ----
+// ---- Update check (every 6 hours; one shared request for all the Housing Widgets) ----
 // When GitHub has a newer version of this widget: a thin yellow glow around the
 // widget face, and an "Update ready" card in the full view with a Run Installer button.
 const UPD_REPO = "r6mjz5hk4v-glitch/housing-widgets";
 const UPD_CACHE = "housing-widgets-update-v3.json"; // v3: fingerprints from the title line down, with update notes
 const UPD_SKIP = "housing-widgets-skipped.json";
+const UPD_EVERY_MS = 6 * 3600e3; // check GitHub at most every 6 hours (one check shared by all the widgets)
 function updHash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); }
 // the code from the title line down: Scriptable rewrites the icon lines above it, so they don't count
 function updBody(src, sig) { const t = src.replace(/\r\n/g, "\n"), i = t.indexOf(sig); return (i >= 0 ? t.slice(i) : t).replace(/\s+$/, ""); }
@@ -44,7 +45,7 @@ function updOwnSource() {
 }
 async function updFetch(fm, p) {
   const r = new Request("https://raw.githubusercontent.com/" + UPD_REPO + "/main/manifest.json?t=" + Date.now());
-  r.timeoutInterval = 8;
+  r.timeoutInterval = 4; // a slow connection never holds up a widget for long
   const m = await r.loadJSON();
   if (!m || !m.files) throw new Error("no manifest");
   const c = { at: Date.now(), files: m.files.filter((f) => f.sig && f.hash).map((f) => ({ sig: f.sig, hash: f.hash, file: f.file, title: f.title || f.name || "", notes: (f.notes || []).slice(0, 3) })) };
@@ -61,10 +62,10 @@ async function updCheck(fetchNow) {
   const fm = FileManager.local(), p = fm.joinPath(fm.documentsDirectory(), UPD_CACHE);
   let c = null;
   try { if (fm.fileExists(p)) c = JSON.parse(fm.readString(p)); } catch (e) {}
-  if (!c || Date.now() - (c.at || 0) > 864e5) {
+  if (!c || Date.now() - (c.at || 0) > UPD_EVERY_MS) {
     if (fetchNow) {
       try { c = await updFetch(fm, p); }
-      catch (e) { if (c) { c.at = Date.now(); try { fm.writeString(p, JSON.stringify(c)); } catch (e2) {} } } // offline: try again tomorrow
+      catch (e) { if (c) { c.at = Date.now(); try { fm.writeString(p, JSON.stringify(c)); } catch (e2) {} } } // offline: try again at the next check
     } else updFetch(fm, p).catch(() => {}); // in the app: refresh in the background, use what's saved now
   }
   if (!c || !c.files) return false;

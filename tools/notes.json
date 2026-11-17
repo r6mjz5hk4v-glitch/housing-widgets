@@ -2,10 +2,18 @@
  "MortgageSpreadWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "MarketRateWidget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -14,10 +22,18 @@
  "ArmIndicatorWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "Sofr30Widget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -26,10 +42,18 @@
  "LockInWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "NewConstructionWidget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -38,10 +62,18 @@
  "BuilderInputsWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "BuilderStocksWidget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Finds more earnings-call transcripts (Green Brick's own, Motley Fool, then Yahoo Finance) and opens each builder's real investor relations page."
@@ -58,10 +90,18 @@
  "ExistingHomesWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "RedfinBuyersSellersWidget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -70,10 +110,18 @@
  "AffordabilityGapWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "PaymentChangeWidget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -82,10 +130,18 @@
  "MigrationWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "RedfinMigrationWidget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -94,10 +150,18 @@
  "BorrowerCreditWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "SavingRateWidget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
@@ -106,16 +170,28 @@
  "SentimentWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "UnemploymentWidget.js": [
   {
    "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
+  {
+   "d": "2026-11-17",
    "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
   }
  ],
  "ReportsWidget.js": [
+  {
+   "d": "2026-11-17",
+   "t": "Checks for updates every 6 hours instead of once a day."
+  },
   {
    "d": "2026-11-17",
    "t": "Read-aloud removed: tapping an edition opens its PDF straight away."
