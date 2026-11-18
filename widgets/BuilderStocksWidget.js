@@ -1009,7 +1009,8 @@ const IR_EVENTS = { LEN: "https://investors.lennar.com/events-and-presentations"
 const FOOL = { DHI: "dr-horton", LEN: "lennar", PHM: "pultegroup", NVR: "nvr", TOL: "toll-brothers", TMHC: "taylor-morrison-home", MTH: "meritage-homes", KBH: "kb-home", DFH: "dream-finders-homes", CCS: "century-communities", MHO: "mi-homes", TPH: "tri-pointe-homes", GRBK: "green-brick-partners", LGIH: "lgi-homes", BZH: "beazer-homes-usa", HOV: "hovnanian-enterprises" };
 const VOICE_NAME = setting("voice_name", "Bert"); // the ElevenLabs voice that reads the calls
 const TTS_MODEL = "eleven_multilingual_v2";
-const MAX_LISTEN_CHARS = 9000; // the prepared remarks, about 10 minutes
+const MAX_LISTEN_CHARS = 45000; // a safety cap only: the full prepared remarks run about 30 minutes
+const TTS_PIECE_CHARS = 4500; // recorded in pieces this size, at sentence ends
 const KEY_NAME = "elevenlabs_api_key"; // shared with the Reports widget
 const ELEVENLABS_KEY = "";
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
@@ -1023,10 +1024,16 @@ function takeEarnings(s, list) {
     const t = String(o.symbol || "").toUpperCase();
     if (!t) return;
     const e = s.earn[t] || {};
-    if (e.next && e.next < now - 6 * 3600e3) { e.last = Math.max(e.last || 0, e.next); e.lastEst = e.nextEst; e.next = null; }
+    if (e.next && e.next < now - 6 * 3600e3) { e.last = Math.max(e.last || 0, e.next); e.lastEst = e.nextEst; e.next = null; e.nextCall = null; }
     const stamps = [o.earningsCallTimestampStart, o.earningsTimestamp, o.earningsTimestampStart].filter((x) => x > 0).map((x) => x * 1000);
     const fut = stamps.filter((x) => x > now - 6 * 3600e3).sort((a, b) => a - b), past = stamps.filter((x) => x <= now - 6 * 3600e3).sort((a, b) => b - a);
-    if (fut.length) { e.next = fut[0]; e.nextEst = !!o.isEarningsDateEstimate; e.nextCall = o.earningsCallTimestampStart ? o.earningsCallTimestampStart * 1000 : null; }
+    if (fut.length) {
+      e.next = fut[0];
+      e.nextEst = !!o.isEarningsDateEstimate;
+      // Yahoo can keep last quarter's call time after the next release date is set: use a call time only near this release
+      const call = o.earningsCallTimestampStart ? o.earningsCallTimestampStart * 1000 : null;
+      e.nextCall = call && call >= e.next - 864e5 && call <= e.next + 4 * 864e5 ? call : null;
+    }
     if (past.length && past[0] > (e.last || 0)) { e.last = past[0]; e.lastEst = false; }
     s.earn[t] = e;
   });
@@ -1034,7 +1041,9 @@ function takeEarnings(s, list) {
 // "before open" / "after close" / a call time, in Central
 function callWhen(ms, call, est) {
   const ct = (x) => new Date(x).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" }).replace(":00", "").replace(" ", "").toLowerCase();
-  // the call's own date when Yahoo has it (a release after the close is often called the next morning)
+  // the call's own date when Yahoo has it (a release after the close is often called the next morning),
+  // but never a call time from a different quarter
+  if (call && Math.abs(call - ms) > 4 * 864e5) call = null;
   if (call) ms = call;
   const day = new Date(ms).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Chicago" });
   const etH = +new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" });
@@ -1128,8 +1137,13 @@ function preparedRemarks(text) {
   const t = text.replace(/\s+/g, " ").trim();
   const from = Math.max(0, t.search(/(prepared remarks|good (morning|afternoon)[,.]? (and|everyone|ladies)|welcome to)/i));
   let body = t.slice(from);
-  const q = body.slice(800).search(/(questions? (and|&) answers?|question-and-answer|we will now (begin|open|take)[^.]{0,40}question|open (it|the (call|line|floor)) (up )?(for|to) (your )?questions|first question (comes|is) from)/i);
-  if (q > 0) body = body.slice(0, 800 + q);
+  // Q&A starts where the operator takes the first question. Earlier mentions in the
+  // remarks ("we'll open it up for questions", "our question and answer period") don't count.
+  const q = body.slice(800).search(/(first question (today )?(comes|is|will come|is coming) from|(take|have) (our|the|your) first question|we('ll| will) now (begin|open|start|conduct) (the |our )?question(-| )and(-| )answer)/i);
+  if (q > 0) {
+    const at = 800 + q, end = Math.max(body.lastIndexOf(". ", at), body.lastIndexOf("? ", at), body.lastIndexOf("! ", at));
+    body = body.slice(0, end > 0 ? end + 1 : at).replace(/\s*Operator\s*:?\s*(thank you|thanks)[.!]?\s*$/i, "");
+  }
   return capText(body);
 }
 // Lennar posts its transcripts as PDFs; for the rest, Motley Fool's free transcript page
@@ -1283,19 +1297,95 @@ async function listenRemarks(s, t, at, tr, say) {
   if (!key) { await Speech.speak(text); return; }
   const voice = await bertVoice(s, key);
   if (!voice) return;
-  const path = fm().joinPath(fm().documentsDirectory(), `call-${t}-${new Date(at).toISOString().slice(0, 10)}-${voice.id.slice(0, 8)}.mp3`);
+  // one recording per call, voice and text (a fixed transcript gets a fresh recording)
+  const stem = `call-${t}-${new Date(at).toISOString().slice(0, 10)}-${voice.id.slice(0, 8)}`;
+  const path = fm().joinPath(fm().documentsDirectory(), `${stem}-${updHash(text).slice(0, 6)}.mp3`);
   if (!fm().fileExists(path)) {
+    const pieces = splitForSpeech(text, TTS_PIECE_CHARS);
+    const piecePath = (k) => path.replace(/\.mp3$/, `-p${k}.mp3`);
+    const todo = pieces.map((x, k) => k).filter((k) => !fm().fileExists(piecePath(k)));
+    const need = todo.reduce((n, k) => n + pieces[k].length, 0);
+    // warn before spending when the key can see the balance and it's short
+    const left = await creditsLeft(key);
+    if (left != null && left < need) {
+      const a = new Alert();
+      a.title = "Not enough ElevenLabs credits";
+      a.message = `This reading needs about ${need.toLocaleString("en-US")} credits; you have ${left.toLocaleString("en-US")} left. Credits reset when your plan renews.`;
+      a.addAction("Read it with the iPhone voice");
+      a.addCancelAction("Cancel");
+      if ((await a.present()) === 0) await Speech.speak(text);
+      return;
+    }
     const pr = say ? progress(say) : null;
-    if (pr) pr.set(`Recording the prepared remarks with ${voice.name} (usually 1–2 minutes)…`);
-    try { fm().write(path, await elevenLabs(text, key, voice.id)); } catch (e) {
-      if (pr) await pr.stop();
-      if (outOfCredits(e)) return creditsAlert(e, text);
-      if (keyProblem(e)) { await askKey(true); return; }
-      throw e;
+    for (const k of todo) {
+      if (pr) pr.set(pieces.length > 1 ? `Recording part ${k + 1} of ${pieces.length} with ${voice.name}…` : `Recording the prepared remarks with ${voice.name}…`);
+      try { fm().write(piecePath(k), await elevenLabs(pieces[k], key, voice.id)); } catch (e) {
+        if (pr) await pr.stop();
+        if (keyProblem(e)) { await askKey(true); return; }
+        if (!outOfCredits(e)) throw e;
+        // out partway: play what was made (pieces stay saved; the next Listen records only the rest)
+        const made = pieces.map((x, n) => n).filter((n) => fm().fileExists(piecePath(n)));
+        if (!made.length || made[0] !== 0) return creditsAlert(e, text);
+        let run = 0; while (run < made.length && made[run] === run) run++;
+        const part = path.replace(/\.mp3$/, "-partial.mp3");
+        fm().write(part, joinMp3(made.slice(0, run).map((n) => fm().read(piecePath(n)))));
+        const said = pieces.slice(0, run).join(" ").length;
+        const a = new Alert();
+        a.title = "Out of ElevenLabs credits";
+        a.message = `Recorded ${run} of ${pieces.length} parts (about ${Math.round(said / text.length * 100)}% of the remarks) before the credits ran out. Those parts stay saved; tap Listen after your credits renew to record the rest.`;
+        a.addAction("Play what was recorded");
+        a.addAction("Read it all with the iPhone voice");
+        a.addCancelAction("Cancel");
+        const pick = await a.present();
+        if (pick === 0) await playAudio(part);
+        if (pick === 1) await Speech.speak(text);
+        return;
+      }
     }
     if (pr) await pr.stop();
+    fm().write(path, joinMp3(pieces.map((x, k) => fm().read(piecePath(k)))));
+    // tidy up: the pieces, a partial copy, and older recordings of this call in this voice
+    try {
+      fm().listContents(fm().documentsDirectory()).forEach((f) => {
+        if (f.startsWith(stem) && f.endsWith(".mp3") && fm().joinPath(fm().documentsDirectory(), f) !== path) fm().remove(fm().joinPath(fm().documentsDirectory(), f));
+      });
+    } catch (e) {}
   }
   await playAudio(path);
+}
+// Text in pieces of at most n characters, broken at sentence ends
+function splitForSpeech(text, n) {
+  const out = [];
+  let rest = text.trim();
+  while (rest.length > n) {
+    const cut = rest.slice(0, n);
+    let end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "));
+    if (end < n / 3) end = cut.lastIndexOf(" ");
+    if (end <= 0) end = n - 1;
+    out.push(rest.slice(0, end + 1).trim());
+    rest = rest.slice(end + 1).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+// MP3 pieces played back to back as one file. MP3 is a run of frames, so pieces can be
+// joined end to end; each piece is padded with 0 to 2 zero bytes (players skip them)
+// so its base64 joins cleanly with the next.
+function joinMp3(datas) {
+  if (datas.length === 1) return datas[0];
+  const b64 = datas.map((d, k) => { const x = d.toBase64String(); return k < datas.length - 1 ? x.replace(/=+$/, (m) => "A".repeat(m.length)) : x; }).join("");
+  return Data.fromBase64String(b64);
+}
+// ElevenLabs credits left this month, or null when the key isn't allowed to see it
+async function creditsLeft(key) {
+  try {
+    const r = new Request("https://api.elevenlabs.io/v1/user/subscription");
+    r.headers = { "xi-api-key": key };
+    r.timeoutInterval = 10;
+    const j = await r.loadJSON();
+    if (!r.response || r.response.statusCode !== 200 || !j || j.character_limit == null) return null;
+    return Math.max(0, j.character_limit - (j.character_count || 0));
+  } catch (e) { return null; }
 }
 // A status line that counts the seconds on the current step, so a slow step looks busy, not stuck
 function progress(say) {
@@ -1378,7 +1468,7 @@ async function askKey(again) {
 }
 // ok elevenLabs
 async function elevenLabs(text, key, voiceId) {
-  const r = new Request(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`);
+  const r = new Request(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_64`);
   r.method = "POST";
   r.timeoutInterval = 180;
   r.headers = { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" };

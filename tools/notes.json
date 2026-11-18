@@ -99,6 +99,10 @@
  ],
  "BuilderStocksWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "Listen now reads the full prepared remarks (about 30 minutes for Lennar), instead of stopping when an executive mentions the Q&A early. It checks your ElevenLabs credits first, and saves what it made if they run out. Next-call dates no longer show last quarter's date."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },

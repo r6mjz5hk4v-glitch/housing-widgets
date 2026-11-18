@@ -1,5 +1,5 @@
 {
- "updated": "Nov 17, 2026",
+ "updated": "Nov 18, 2026",
  "files": [
   {
    "name": "Setup",
@@ -215,8 +215,12 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "58611ae2",
+   "hash": "19a465b9",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "Listen now reads the full prepared remarks (about 30 minutes for Lennar), instead of stopping when an executive mentions the Q&A early. It checks your ElevenLabs credits first, and saves what it made if they run out. Next-call dates no longer show last quarter's date."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -224,10 +228,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Finds more earnings-call transcripts (Green Brick's own, Motley Fool, then Yahoo Finance) and opens each builder's real investor relations page."
     }
    ]
   },
