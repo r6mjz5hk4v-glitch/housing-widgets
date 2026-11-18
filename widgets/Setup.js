@@ -10,7 +10,7 @@
 //
 //   FRED API key        needed by most widgets (free, takes 2 minutes)
 //   Name and email      the SEC asks for these on its data requests
-//                       (builder filings in Chartbook and Builder Stocks)
+//                       (builder filings in Builder Stocks)
 //   ElevenLabs key      optional: natural-voice "Listen" for earnings calls in
 //                       Builder Stocks (without it, the iPhone voice reads)
 //   Voice name          the ElevenLabs voice to use (default Bert)

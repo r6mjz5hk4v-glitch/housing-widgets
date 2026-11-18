@@ -350,6 +350,10 @@
  "ReportsWidget.js": [
   {
    "d": "2026-11-18",
+   "t": "Builder earnings-release cards removed: builder content is now just the investor decks. MBA Forecast Commentary is found from MBA's archive page, wherever MBA stores it."
+  },
+  {
+   "d": "2026-11-18",
    "t": "New card: Builder investor decks. The newest slide decks (not filings) from D.R. Horton, Lennar, Taylor Morrison, KB Home, Green Brick and Dream Finders, plus Pulte and Toll when they post one."
   },
   {
@@ -388,6 +392,10 @@
   }
  ],
  "Setup.js": [
+  {
+   "d": "2026-11-18",
+   "t": "Your name and email are now only used by Builder Stocks."
+  },
   {
    "d": "2026-11-17",
    "t": "ElevenLabs key is now just for Builder Stocks' earnings calls."

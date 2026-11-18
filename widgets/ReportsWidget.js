@@ -302,7 +302,8 @@ function readStore() {
   s.openedKeys = s.openedKeys || {};
   // books merged since (Fannie's and MBA's two forecasts became one book each), and
   // MBA's forecast tables, replaced by its Forecast Commentary
-  for (const id of ["fnmah", "fnmae", "mbaf", "mbae", "mba"]) {
+  // and the builders' earnings releases, replaced by their investor decks
+  for (const id of ["fnmah", "fnmae", "mbaf", "mbae", "mba", "b-DHI", "b-LEN", "b-PHM", "b-NVR", "b-TOL"]) {
     if (!s.books[id]) continue;
     delete s.books[id];
     try { for (const f of fm().listContents(fm().documentsDirectory())) if (f.startsWith(`book-${id}-`)) fm().remove(docPath(f)); } catch (e) {}
@@ -486,8 +487,50 @@ const MON3 = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oc
 // MBA Forecast Commentary (commentary and charts, no data tables), under names MBA
 // hasn't kept consistent: forecast-commentary-mar26, -sep25-final, -mar-2024
 function mbaCommentaryUrls(p) {
-  const dir = `https://www.mba.org/docs/default-source/research-and-forecasts/forecasts/${p.y}/forecast-commentary-`, mo = MON3[p.m], yy = String(p.y).slice(2);
-  return [`${mo}${yy}`, `${mo}${yy}-final`, `${mo}-${p.y}`, `${mo}-${p.y}-final`].map((n) => `${dir}${n}.pdf`);
+  const mo = MON3[p.m], full = MONF[p.m].toLowerCase(), yy = String(p.y).slice(2), y = p.y;
+  const names = [`${mo}${yy}`, `${mo}${yy}-final`, `${mo}-${y}`, `${mo}-${y}-final`, `${full}-${y}`, `${full}-${y}-final`];
+  const dirs = [`https://www.mba.org/docs/default-source/research-and-forecasts/forecasts/${y}/`, "https://www.mba.org/docs/default-source/research-and-forecasts/forecasts/"];
+  const out = [];
+  for (const d of dirs) for (const n of names) out.push(`${d}forecast-commentary-${n}.pdf`);
+  return out;
+}
+const MBA_COMMENTARY_PAGE = "https://www.mba.org/forecasts-and-commentary/economic-commentary-archives";
+// MBA's archive page lists every commentary wherever MBA keeps it; file-name guesses are the fallback
+async function findMbaCommentary(have) {
+  let links = [];
+  try {
+    const page = await getPage(MBA_COMMENTARY_PAGE);
+    if (page.code < 400) {
+      const body = String(page.body).replace(/&amp;/g, "&"); // the raw page: its links are in the tags
+      for (const m of body.matchAll(/href="([^"]*forecast-commentary[^"]*\.pdf[^"]*)"/gi)) {
+        const u = m[1].startsWith("http") ? m[1] : "https://www.mba.org" + (m[1].startsWith("/") ? "" : "/") + m[1];
+        if (!links.includes(u)) links.push(u);
+      }
+    }
+  } catch (e) {}
+  // each link's month, from its name: mar26, sep25-final, mar-2024, august-2024
+  const dated = [];
+  for (const u of links) {
+    const f = decodeURIComponent(u.split("/").pop().split("?")[0]).toLowerCase();
+    const m = /forecast-commentary-([a-z]+)-?(\d{2}|\d{4})(?=[-.])/.exec(f);
+    if (!m) continue;
+    const mi = MON3.indexOf(m[1].slice(0, 3));
+    if (mi < 0) continue;
+    const y = m[2].length === 2 ? 2000 + +m[2] : +m[2];
+    dated.push({ key: keyOf(y, mi), label: label(keyOf(y, mi)), url: u });
+  }
+  dated.sort((a, b) => (a.key < b.key ? 1 : -1));
+  if (dated.length) {
+    const known = new Set(have.map((h) => h.key)), out = [];
+    for (const d of dated) {
+      if (out.length + have.length >= KEEP * 2 || out.length >= KEEP) break;
+      if (known.has(d.key)) continue;
+      const h = await pdfThere(d.url);
+      if (h.ok) out.push({ key: d.key, label: d.label, url: d.url, posted: h.posted || (have.length ? todayIso() : null), est: !h.posted });
+    }
+    if (out.length || have.length) return out;
+  }
+  return scan(have, monthsBack(0), pdfAt(mbaCommentaryUrls));
 }
 
 // HUD's FHA report for data month M posts 6 to 9 weeks after M ends, under
@@ -830,7 +873,7 @@ const BOOKS = [
     parts: [{ k: "h", name: "Housing Forecast", urls: fannieUrls("housing-forecast") }, { k: "e", name: "Economic Forecast", urls: fannieUrls("economic-forecast") }],
     find: (have) => scan(have, monthsBack(0), pdfAt(fannieUrls("housing-forecast"))), next: monthlyNext([0, 8, 22]) },
   { id: "mbac", name: "MBA Forecast Commentary", short: "MBA commentary", src: "MBA", cadence: "monthly",
-    find: (have) => scan(have, monthsBack(0), pdfAt(mbaCommentaryUrls)), next: monthlyNext([0, 10, 22]) },
+    find: findMbaCommentary, next: monthlyNext([0, 10, 22]) },
   { id: "decks", name: "Builder investor decks", short: "Builder decks", src: "Builders' investor sites", cadence: "about quarterly",
     find: findDecks, next: decksNext, keepEds: keepDecks },
   { id: "hud", name: "HUD FHA Loan Performance Trends", short: "HUD FHA", src: "HUD", cadence: "monthly",
@@ -839,10 +882,7 @@ const BOOKS = [
     find: findBeige, next: beigeNext },
   { id: "hhdc", name: "NY Fed Household Debt and Credit", short: "NY Fed debt", src: "New York Fed", cadence: "quarterly",
     find: (have) => scan(have, quartersBack(), pdfAt(hhdcUrls)), next: hhdcNext },
-].concat(BUILDERS.map((b) => ({
-  id: `b-${b.t}`, name: `${b.name} earnings release`, short: `${b.short} results`, src: "SEC filing (8-K)", cadence: "quarterly",
-  kind: "html", builder: b, find: (have, st) => findBuilder(b, have, st), next: builderNext,
-})));
+];
 const bookById = (id) => BOOKS.find((b) => b.id === id);
 
 // ---------- Checking for new editions ----------
@@ -1305,8 +1345,7 @@ function render() {
   D.rows.forEach(function (r) { r.eds.forEach(function (e) { if (!e.opened) nNew++; }); });
   el("list").innerHTML = h;
   el("lede").textContent = "Release schedule · " + D.rows.length + " books" + (nNew ? " · " + nNew + " unopened" : "") + (D.checked ? " · checked " + D.checked : "");
-  var b = '<button data-a="sec">' + (D.sec ? "SEC contact" : "Set SEC contact (for builders)") + '</button>';
-  el("btns").innerHTML = b;
+  el("btns").innerHTML = "";
   el("note").textContent = D.note;
 }
 document.addEventListener("click", function (ev) {
@@ -1375,12 +1414,6 @@ async function handle(s, q, say) {
 
 async function runApp() {
   const s = readStore();
-  // the builder releases need a contact for the SEC; asked once
-  if (!SEC_CONTACT && !s.secAsked) {
-    s.secAsked = true;
-    saveStore(s);
-    await askSecContact();
-  }
   const wv = updWV(new WebView());
   await wv.loadHTML(...updArgs(PAGE_HTML.replace("__DATA__", () => JSON.stringify(payload(s)))));
   let open = true;
