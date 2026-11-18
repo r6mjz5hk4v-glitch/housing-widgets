@@ -682,6 +682,139 @@ function builderNext(st) {
   return st.nextEst ? { from: plusDays(st.nextEst, -7), to: plusDays(st.nextEst, 7) } : null;
 }
 
+// ---------- Builder investor decks ----------
+// Slide decks only (not filings or transcripts), from the builders that post them.
+// One card; the newest 2 decks of each builder are kept.
+const DECK_SOURCES = [
+  { t: "DHI", short: "Horton", find: () => deckByPattern(dhiDeckUrls) },
+  { t: "LEN", short: "Lennar", find: () => deckByPattern(lenDeckUrls) },
+  { t: "TMHC", short: "Taylor Morrison", find: () => deckByPattern(tmhcDeckUrls) },
+  { t: "KBH", short: "KB Home", find: async () => { const a = await deckByPattern(kbhDeckUrls); return a.length ? a : deckFromPages(["https://investor.kbhome.com/"]); } },
+  { t: "GRBK", short: "Green Brick", find: () => deckByPattern(grbkDeckUrls) },
+  { t: "DFH", short: "Dream Finders", find: () => deckFromPages(["https://investors.dreamfindershomes.com/", "https://investors.dreamfindershomes.com/news-events/events"]) },
+  { t: "PHM", short: "Pulte", find: () => deckFromPages(["https://pultegroupinc.com/investor-relations/", "https://pultegroupinc.com/investor-relations/events-and-presentations/default.aspx"]) },
+  { t: "TOL", short: "Toll", find: () => deckFromPages(["https://investors.tollbrothers.com/", "https://investors.tollbrothers.com/news-and-events/events-and-presentations"]) },
+];
+// calendar quarters that ended in the last 15 months, newest first
+function endedQuarters(n) {
+  const out = [], now = new Date();
+  let y = now.getFullYear(), q = Math.floor(now.getMonth() / 3); // the last full quarter
+  if (q === 0) { q = 4; y--; }
+  for (let i = 0; i < (n || 5); i++) {
+    out.push({ y, q, yy: String(y).slice(2), end: `${y}-${String(q * 3).padStart(2, "0")}-28` });
+    if (--q === 0) { q = 4; y--; }
+  }
+  return out;
+}
+// Each pattern list: [{ per, label, end, urls }] newest first; the first 2 that exist are used
+function dhiDeckUrls() {
+  // D.R. Horton's fiscal year ends in September: calendar Q4 is its fiscal Q1 of the next year
+  return endedQuarters(5).map((c) => {
+    const fy = c.q === 4 ? c.y + 1 : c.y, fq = c.q === 4 ? 1 : c.q + 1;
+    return { per: `${c.y}Q${c.q}`, label: `Q${fq} FY${fy}`, end: c.end, urls: [`https://investor.drhorton.com/~/media/Files/D/D-R-Horton-IR/reports-and-presentations/presentations/q${fq}-${fy}-investor-presentation.pdf`] };
+  });
+}
+function tmhcDeckUrls() {
+  return endedQuarters(5).map((c) => ({ per: `${c.y}Q${c.q}`, label: `Q${c.q} ${c.y}`, end: c.end, urls: [`https://s27.q4cdn.com/448041563/files/doc_earnings/${c.y}/q${c.q}/presentation/TMHC-${c.q}Q${c.yy}-Investor-Presentation-Final.pdf`] }));
+}
+function grbkDeckUrls() {
+  return endedQuarters(5).map((c) => ({ per: `${c.y}Q${c.q}`, label: `Q${c.q} ${c.y}`, end: c.end, urls: [`https://s202.q4cdn.com/944500558/files/doc_financials/${c.y}/q${c.q}/${c.q}Q${c.yy}-Investor-Presentation-Final.pdf`] }));
+}
+function kbhDeckUrls() {
+  // KB Home's fiscal quarters end in February, May, August and November
+  const out = [], now = new Date();
+  for (let back = 0; out.length < 5 && back < 18; back++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - back - 1, 1), m = d.getMonth();
+    if ([1, 4, 7, 10].indexOf(m) < 0) continue;
+    const fq = [1, 4, 7, 10].indexOf(m) + 1, fy = d.getFullYear();
+    out.push({ per: `${fy}-${String(m + 1).padStart(2, "0")}`, label: `Q${fq} ${fy}`, end: `${fy}-${String(m + 1).padStart(2, "0")}-28`,
+      urls: [`https://s201.q4cdn.com/124745054/files/doc_financials/${fy}/q${fq}/Q${fq}-${fy}-KBH-IR-Presentation.pdf`, `https://s21.q4cdn.com/462588783/files/doc_financials/${fy}/q${fq}/Q${fq}-${fy}-KBH-IR-Presentation.pdf`] });
+  }
+  return out;
+}
+function lenDeckUrls() {
+  // Lennar posts one now and then, named by month: "June 2026 Investor Presentation"
+  const out = [], now = new Date();
+  for (let back = 0; back < 9; back++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - back, 1), name = `${MONF[d.getMonth()]} ${d.getFullYear()} Investor Presentation`;
+    out.push({ per: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: `${MONF[d.getMonth()]} ${d.getFullYear()}`, end: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`,
+      urls: [`https://investors.lennar.com/~/media/Files/L/Lennar-IR-V3/reports-and-presentations/${encodeURIComponent(name)}.pdf`] });
+  }
+  return out;
+}
+async function deckByPattern(listFn) {
+  const out = [];
+  for (const c of listFn()) {
+    if (out.length >= KEEP) break;
+    for (const url of c.urls) {
+      const h = await pdfThere(url);
+      if (h.ok) { out.push({ per: c.per, label: c.label, url, posted: h.posted || null, sort: h.posted || c.end }); break; }
+    }
+  }
+  return out;
+}
+// Builders whose deck names can't be predicted: read their IR pages for PDF links that are decks
+async function deckFromPages(pages) {
+  const seen = new Set(), cands = [];
+  for (const pg of pages) {
+    let html = "";
+    try { const p = await getPage(pg); if (p.code >= 400) continue; html = p.body; } catch (e) { continue; }
+    const origin = pg.replace(/^(https?:\/\/[^/]+).*/, "$1");
+    for (const m of html.matchAll(/href="([^"]+?\.pdf[^"]*)"[^>]*>([\s\S]{0,200}?)<\/a>/gi)) {
+      let u = decodeHtml(m[1]);
+      u = /^https?:/i.test(u) ? u : u.startsWith("//") ? "https:" + u : u.startsWith("/") ? origin + u : pg.replace(/[^/]*$/, "") + u;
+      const hay = decodeURIComponent(u) + " " + m[2].replace(/<[^>]+>/g, " ");
+      if (!/presentation|slides|overview/i.test(hay) || /transcript|release|10-?q|10-?k|proxy|annual report|sustainab|esg/i.test(hay)) continue;
+      if (seen.has(u)) continue;
+      seen.add(u);
+      cands.push(u);
+    }
+  }
+  const out = [];
+  for (const u of cands.slice(0, 6)) {
+    const h = await pdfThere(u);
+    if (!h.ok) continue;
+    const name = decodeURIComponent(u.split("/").pop().replace(/\.pdf.*$/i, "")).replace(/[-_+]+/g, " ").trim();
+    out.push({ per: h.posted || name, label: deckLabel(name, h.posted), url: u, posted: h.posted || null, sort: h.posted || "0000" });
+  }
+  return out.sort((a, b) => (a.sort < b.sort ? 1 : -1)).slice(0, KEEP);
+}
+// A short name from a deck's file name: its quarter when it has one ("Q3 2026"),
+// else what's left after the boilerplate, with the month it was posted
+function deckLabel(name, posted) {
+  const q = /\bQ([1-4])\s*(20\d\d)\b/i.exec(name) || /\b([1-4])Q\s*(\d\d)\b/i.exec(name) || /\bQ([1-4])\b.*?\b(20\d\d)\b/i.exec(name);
+  if (q) return `Q${q[1]} ${q[2].length === 2 ? "20" + q[2] : q[2]}`;
+  const rest = name.replace(/\b(final|revised|v\d|investor|presentation|slides|ir)\b/gi, " ").replace(/\b[A-Z]{2,5}\b/g, " ").replace(/\b\d{1,2} \d{1,2} \d{2,4}\b/g, " ").replace(/\s+/g, " ").trim();
+  const when = posted ? `${MON[+posted.slice(5, 7) - 1]} ${posted.slice(0, 4)}` : "";
+  return [rest.slice(0, 40), when].filter(Boolean).join(" · ") || "Investor presentation";
+}
+async function findDecks(have, st) {
+  const found = [], errs = [];
+  st.deckLast = st.deckLast || {};
+  await Promise.all(DECK_SOURCES.map(async (src) => {
+    // skip a builder whose newest deck is recent: decks come about quarterly
+    const mine = have.filter((e) => e.t === src.t);
+    if (mine.length >= KEEP && mine[0].sort && Date.now() - Date.parse(mine[0].sort) < 70 * DAY) return;
+    try {
+      for (const d of await src.find()) found.push({ key: `${src.t}-${safeKey(d.per)}`, t: src.t, label: `${src.short} · ${d.label}`, url: d.url, posted: d.posted, est: !d.posted, sort: d.sort });
+    } catch (e) { errs.push(src.short); }
+  }));
+  if (errs.length === DECK_SOURCES.length) throw new Error("no connection");
+  return found;
+}
+// keep the newest 2 decks of each builder
+function keepDecks(eds) {
+  const n = {};
+  return eds.filter((e) => { const t = e.t || String(e.key).split("-")[0]; n[t] = (n[t] || 0) + 1; return n[t] <= KEEP; });
+}
+// the next deck: about a quarter after each builder's newest one
+function decksNext(st) {
+  const newest = {};
+  (st.eds || []).forEach((e) => { const t = e.t || String(e.key).split("-")[0]; if (e.sort && (!newest[t] || e.sort > newest[t])) newest[t] = e.sort; });
+  const nexts = Object.values(newest).map((d) => plusDays(String(d).slice(0, 10), 91)).filter((d) => d >= todayIso()).sort();
+  return nexts.length ? { from: plusDays(nexts[0], -10), to: plusDays(nexts[0], 10) } : null;
+}
+
 // ---------- The books ----------
 // monthlyNext([months after the edition's month, first day, last day]): the usual window
 const BOOKS = [
@@ -698,6 +831,8 @@ const BOOKS = [
     find: (have) => scan(have, monthsBack(0), pdfAt(fannieUrls("housing-forecast"))), next: monthlyNext([0, 8, 22]) },
   { id: "mbac", name: "MBA Forecast Commentary", short: "MBA commentary", src: "MBA", cadence: "monthly",
     find: (have) => scan(have, monthsBack(0), pdfAt(mbaCommentaryUrls)), next: monthlyNext([0, 10, 22]) },
+  { id: "decks", name: "Builder investor decks", short: "Builder decks", src: "Builders' investor sites", cadence: "about quarterly",
+    find: findDecks, next: decksNext, keepEds: keepDecks },
   { id: "hud", name: "HUD FHA Loan Performance Trends", short: "HUD FHA", src: "HUD", cadence: "monthly",
     find: findHud, next: hudNext },
   { id: "beige", name: "Fed Beige Book", short: "Beige Book", src: "Federal Reserve Board", cadence: "8 a year",
@@ -731,7 +866,8 @@ function mergeEds(s, id, have, found) {
   // the same file under two editions: a site handing out its newest file for a
   // month that isn't out yet; the older edition is the real one
   eds = eds.filter((e, i) => !e.url || !eds.slice(i + 1).some((o) => o.url === e.url));
-  return eds.slice(0, KEEP);
+  const book = bookById(id);
+  return book && book.keepEds ? book.keepEds(eds) : eds.slice(0, KEEP);
 }
 // Remove saved PDFs of editions that dropped off
 function prune(id, eds) {

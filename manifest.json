@@ -489,8 +489,12 @@
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA, HUD, Fed, builder 10-Qs)",
    "needs": [],
    "sig": "// Reports Widget (small): a release calendar for the industry reports you",
-   "hash": "4e6e1643",
+   "hash": "658a45dc",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "New card: Builder investor decks. The newest slide decks (not filings) from D.R. Horton, Lennar, Taylor Morrison, KB Home, Green Brick and Dream Finders, plus Pulte and Toll when they post one."
+    },
     {
      "d": "2026-11-18",
      "t": "MBA's card now holds MBA Forecast Commentary (commentary and charts) instead of the two forecast data-table PDFs."
@@ -498,10 +502,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   }
