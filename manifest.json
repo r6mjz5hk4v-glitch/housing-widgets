@@ -489,8 +489,12 @@
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA, HUD, Fed, builder 10-Qs)",
    "needs": [],
    "sig": "// Reports Widget (small): a release calendar for the industry reports you",
-   "hash": "4bd46122",
+   "hash": "4e6e1643",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "MBA's card now holds MBA Forecast Commentary (commentary and charts) instead of the two forecast data-table PDFs."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -498,10 +502,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   }

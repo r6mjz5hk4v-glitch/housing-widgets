@@ -17,7 +17,7 @@ function setting(key, fallback) {
 //   Urban Institute Housing Finance at a Glance chartbook (monthly)
 //   ICE Mortgage Monitor (monthly)
 //   Fannie Mae Housing Forecast and Economic Forecast (monthly)
-//   MBA Mortgage Finance Forecast and Economic Forecast (monthly)
+//   MBA Forecast Commentary (monthly: commentary and charts, no data tables)
 //   HUD FHA Single Family Loan Performance Trends (monthly)
 //   Fed Beige Book (8 a year)
 //   NY Fed Household Debt and Credit Report (quarterly)
@@ -300,8 +300,9 @@ function readStore() {
   }
   s.books = s.books || {};
   s.openedKeys = s.openedKeys || {};
-  // books merged since (Fannie's and MBA's two forecasts became one book each)
-  for (const id of ["fnmah", "fnmae", "mbaf", "mbae"]) {
+  // books merged since (Fannie's and MBA's two forecasts became one book each), and
+  // MBA's forecast tables, replaced by its Forecast Commentary
+  for (const id of ["fnmah", "fnmae", "mbaf", "mbae", "mba"]) {
     if (!s.books[id]) continue;
     delete s.books[id];
     try { for (const f of fm().listContents(fm().documentsDirectory())) if (f.startsWith(`book-${id}-`)) fm().remove(docPath(f)); } catch (e) {}
@@ -481,9 +482,13 @@ async function probeIce(p) {
 }
 // Fannie Mae ESR: housing-forecast-MMYYYY and economic-forecast-MMYYYY
 const fannieUrls = (name) => (p) => [`https://www.fanniemae.com/media/document/pdf/${name}-${String(p.m + 1).padStart(2, "0")}${p.y}`];
-// MBA: forecasts/YYYY/mortgage-finance-forecast-mon-YYYY.pdf (and economic-forecast-)
 const MON3 = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-const mbaUrls = (name) => (p) => [`https://www.mba.org/docs/default-source/research-and-forecasts/forecasts/${p.y}/${name}-${MON3[p.m]}-${p.y}.pdf`];
+// MBA Forecast Commentary (commentary and charts, no data tables), under names MBA
+// hasn't kept consistent: forecast-commentary-mar26, -sep25-final, -mar-2024
+function mbaCommentaryUrls(p) {
+  const dir = `https://www.mba.org/docs/default-source/research-and-forecasts/forecasts/${p.y}/forecast-commentary-`, mo = MON3[p.m], yy = String(p.y).slice(2);
+  return [`${mo}${yy}`, `${mo}${yy}-final`, `${mo}-${p.y}`, `${mo}-${p.y}-final`].map((n) => `${dir}${n}.pdf`);
+}
 
 // HUD's FHA report for data month M posts 6 to 9 weeks after M ends, under
 // names that have changed over the years (FHALPT_Aug2026, FHALPT-AUGUST2026, ...)
@@ -686,14 +691,13 @@ const BOOKS = [
     find: (have) => scan(have, monthsBack(0), probeUrban), next: monthlyNext([0, 10, 28]) },
   { id: "ice", name: "ICE Mortgage Monitor", short: "ICE Monitor", src: "ICE", cadence: "monthly",
     find: (have) => scan(have, monthsBack(0), probeIce), next: monthlyNext([0, 1, 14]) },
-  // Fannie and MBA each put out two forecasts on the same day: one book each,
+  // Fannie puts out two forecasts on the same day: one book,
   // found by the first, and tapping an edition asks which PDF
   { id: "fannie", name: "Fannie Mae Forecasts", short: "Fannie forecasts", src: "Fannie Mae ESR", cadence: "monthly · 2 PDFs",
     parts: [{ k: "h", name: "Housing Forecast", urls: fannieUrls("housing-forecast") }, { k: "e", name: "Economic Forecast", urls: fannieUrls("economic-forecast") }],
     find: (have) => scan(have, monthsBack(0), pdfAt(fannieUrls("housing-forecast"))), next: monthlyNext([0, 8, 22]) },
-  { id: "mba", name: "MBA Forecasts", short: "MBA forecasts", src: "MBA", cadence: "monthly · 2 PDFs",
-    parts: [{ k: "m", name: "Mortgage Finance Forecast", urls: mbaUrls("mortgage-finance-forecast") }, { k: "e", name: "Economic Forecast", urls: mbaUrls("economic-forecast") }],
-    find: (have) => scan(have, monthsBack(0), pdfAt(mbaUrls("mortgage-finance-forecast"))), next: monthlyNext([0, 10, 22]) },
+  { id: "mbac", name: "MBA Forecast Commentary", short: "MBA commentary", src: "MBA", cadence: "monthly",
+    find: (have) => scan(have, monthsBack(0), pdfAt(mbaCommentaryUrls)), next: monthlyNext([0, 10, 22]) },
   { id: "hud", name: "HUD FHA Loan Performance Trends", short: "HUD FHA", src: "HUD", cadence: "monthly",
     find: findHud, next: hudNext },
   { id: "beige", name: "Fed Beige Book", short: "Beige Book", src: "Federal Reserve Board", cadence: "8 a year",
