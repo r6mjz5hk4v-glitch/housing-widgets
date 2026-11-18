@@ -78,8 +78,15 @@ async function updCheck(fetchNow) {
   if (!c || !c.files) return false;
   const src = updOwnSource();
   if (!src) return false;
-  const top = src.slice(0, 3000), mine = c.files.find((f) => top.includes(f.sig));
-  if (!mine || mine.hash === updHash(updBody(src, mine.sig))) return false;
+  const top = src.slice(0, 3000), find = (cc) => cc.files.find((f) => top.includes(f.sig));
+  let mine = find(c);
+  if (!mine) return false;
+  let same = mine.hash === updHash(updBody(src, mine.sig));
+  // a mismatch against an older saved list may just mean this widget was installed after it: check GitHub again first
+  if (!same && Date.now() - (c.at || 0) > 15 * 60e3) {
+    try { const fresh = await updFetch(fm, p); const m2 = find(fresh); if (m2) { mine = m2; same = mine.hash === updHash(updBody(src, mine.sig)); } } catch (e) {}
+  }
+  if (same) return false;
   if (updSkips(fm)[mine.file] === mine.hash) return false; // skipped by hand
   UPD_INFO = mine;
   return true;

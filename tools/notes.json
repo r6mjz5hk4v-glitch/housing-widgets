@@ -1,6 +1,10 @@
 {
  "MortgageSpreadWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -14,6 +18,10 @@
   }
  ],
  "MarketRateWidget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
@@ -29,6 +37,10 @@
  ],
  "ArmIndicatorWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -42,6 +54,10 @@
   }
  ],
  "Sofr30Widget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
@@ -57,6 +73,10 @@
  ],
  "LockInWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -70,6 +90,10 @@
   }
  ],
  "NewConstructionWidget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
@@ -85,6 +109,10 @@
  ],
  "BuilderInputsWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -98,6 +126,10 @@
   }
  ],
  "BuilderStocksWidget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-18",
    "t": "Listen now reads the full prepared remarks (about 30 minutes for Lennar), instead of stopping when an executive mentions the Q&A early. It checks your ElevenLabs credits first, and saves what it made if they run out. Next-call dates no longer show last quarter's date."
@@ -125,6 +157,10 @@
  ],
  "ExistingHomesWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -138,6 +174,10 @@
   }
  ],
  "RedfinBuyersSellersWidget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
@@ -153,6 +193,10 @@
  ],
  "AffordabilityGapWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -166,6 +210,10 @@
   }
  ],
  "PaymentChangeWidget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
@@ -181,6 +229,10 @@
  ],
  "MigrationWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -194,6 +246,10 @@
   }
  ],
  "RedfinMigrationWidget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
@@ -209,6 +265,10 @@
  ],
  "BorrowerCreditWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -222,6 +282,10 @@
   }
  ],
  "SavingRateWidget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
@@ -237,6 +301,10 @@
  ],
  "SentimentWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -251,6 +319,10 @@
  ],
  "UnemploymentWidget.js": [
   {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
+  {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
   },
@@ -264,6 +336,10 @@
   }
  ],
  "ReportsWidget.js": [
+  {
+   "d": "2026-11-18",
+   "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+  },
   {
    "d": "2026-11-17",
    "t": "Test update: nothing about how this widget works has changed."
@@ -282,6 +358,10 @@
   }
  ],
  "Installer.js": [
+  {
+   "d": "2026-11-18",
+   "t": "Saves the latest update list as it installs, so just-installed widgets don't show Update ready."
+  },
   {
    "d": "2026-11-17",
    "t": "Keeps each script's own icon color, and can update a single widget from its Update ready button."

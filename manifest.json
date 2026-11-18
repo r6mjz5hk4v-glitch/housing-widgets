@@ -23,8 +23,12 @@
    "about": "Installs and updates everything below (and itself)",
    "needs": [],
    "sig": "// Installer for the Housing Widgets",
-   "hash": "b440287f",
+   "hash": "41035733",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "Saves the latest update list as it installs, so just-installed widgets don't show Update ready."
+    },
     {
      "d": "2026-11-17",
      "t": "Keeps each script's own icon color, and can update a single widget from its Update ready button."
@@ -40,8 +44,12 @@
     "fred"
    ],
    "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "e8fb0c8",
+   "hash": "be980ce5",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -49,10 +57,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -65,8 +69,12 @@
     "fred"
    ],
    "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate",
-   "hash": "38e5e788",
+   "hash": "a6076ebd",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -74,10 +82,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -90,8 +94,12 @@
     "fred"
    ],
    "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "3380fdeb",
+   "hash": "46e6d686",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -99,10 +107,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -115,8 +119,12 @@
     "fred"
    ],
    "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "bd06080f",
+   "hash": "cdfd9998",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -124,10 +132,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -140,8 +144,12 @@
     "fred"
    ],
    "sig": "// Rate Lock-In for Scriptable",
-   "hash": "dc3093e5",
+   "hash": "7e9a5e96",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -149,10 +157,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -165,8 +169,12 @@
     "fred"
    ],
    "sig": "// New Construction for Scriptable",
-   "hash": "397c5759",
+   "hash": "33322092",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -174,10 +182,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -190,8 +194,12 @@
     "fred"
    ],
    "sig": "// Builder Inputs for Scriptable",
-   "hash": "ffd67931",
+   "hash": "81250e5e",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -199,10 +207,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -215,8 +219,12 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "19a465b9",
+   "hash": "a408f4b6",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-18",
      "t": "Listen now reads the full prepared remarks (about 30 minutes for Lennar), instead of stopping when an executive mentions the Q&A early. It checks your ElevenLabs credits first, and saves what it made if they run out. Next-call dates no longer show last quarter's date."
@@ -224,10 +232,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -240,8 +244,12 @@
     "fred"
    ],
    "sig": "// Existing Homes for Scriptable",
-   "hash": "89596fc",
+   "hash": "2bcc734d",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -249,10 +257,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -263,8 +267,12 @@
    "about": "Redfin's count of active buyers vs sellers",
    "needs": [],
    "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable",
-   "hash": "574118f",
+   "hash": "beb6d3ec",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -272,10 +280,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -288,8 +292,12 @@
     "metro"
    ],
    "sig": "// Housing Affordability Gap for Scriptable",
-   "hash": "ca0340cb",
+   "hash": "bc40c150",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -297,10 +305,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -314,8 +318,12 @@
     "metro"
    ],
    "sig": "// Payment vs N Years Ago for Scriptable",
-   "hash": "78ab4de5",
+   "hash": "b10eb43c",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -323,10 +331,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -339,8 +343,12 @@
     "metro"
    ],
    "sig": "// Metro Migration for Scriptable",
-   "hash": "5f3139d9",
+   "hash": "a82a5e0c",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -348,10 +356,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -364,8 +368,12 @@
     "metro"
    ],
    "sig": "// Redfin Migration for Scriptable",
-   "hash": "788b82c5",
+   "hash": "ebc2ae58",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -373,10 +381,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -387,8 +391,12 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "35f9bc80",
+   "hash": "d8324d95",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -396,10 +404,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -412,8 +416,12 @@
     "fred"
    ],
    "sig": "// Personal Saving Rate Widget for Scriptable (small widget)",
-   "hash": "5f9015c1",
+   "hash": "d61accb0",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -421,10 +429,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -437,8 +441,12 @@
     "fred"
    ],
    "sig": "// Consumer Sentiment Widget for Scriptable (small widget)",
-   "hash": "48e1e539",
+   "hash": "bfbdc76",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -446,10 +454,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -462,8 +466,12 @@
     "fred"
    ],
    "sig": "// Unemployment Rate Widget for Scriptable (small widget)",
-   "hash": "542a947c",
+   "hash": "340253",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -471,10 +479,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Shows a thin yellow glow and an Update ready button when a newer version is out. Tap the button to see what changed, then install it or skip it."
     }
    ]
   },
@@ -485,8 +489,12 @@
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA, HUD, Fed, builder 10-Qs)",
    "needs": [],
    "sig": "// Reports Widget (small): a release calendar for the industry reports you",
-   "hash": "4a6bea6b",
+   "hash": "4bd46122",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
+    },
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
@@ -494,10 +502,6 @@
     {
      "d": "2026-11-17",
      "t": "Checks for updates every 6 hours instead of once a day."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Read-aloud removed: tapping an edition opens its PDF straight away."
     }
    ]
   }

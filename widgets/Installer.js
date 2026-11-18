@@ -155,6 +155,13 @@ async function worker() {
 }
 await Promise.all([worker(), worker(), worker(), worker()]);
 
+// Save the update list just downloaded, so the widgets compare against it right away
+// (an older saved list would make a just-installed widget look out of date)
+try {
+  const lf = FileManager.local();
+  lf.writeString(lf.joinPath(lf.documentsDirectory(), "housing-widgets-update-v3.json"), JSON.stringify({ at: Date.now(), files: man.files.filter((f) => f.sig && f.hash).map((f) => ({ sig: f.sig, hash: f.hash, file: f.file, title: f.title || f.name || "", notes: (f.notes || []).slice(0, 3) })) }));
+} catch (e) {}
+
 const uniq = (xs) => [...new Set(xs)];
 let msg = "";
 if (results.added.length) msg += "Added: " + uniq(results.added).join(", ") + "\n\n";
