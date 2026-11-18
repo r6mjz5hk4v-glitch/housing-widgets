@@ -128,6 +128,10 @@
  "BuilderStocksWidget.js": [
   {
    "d": "2026-11-18",
+   "t": "Past calls you've already recorded with ElevenLabs show a green \"Recorded\" tag (or \"Partly recorded\"), so you can see where credits went. Those play free."
+  },
+  {
+   "d": "2026-11-18",
    "t": "New under the Voice button: Saver quality, which records with ElevenLabs' Flash model in the same voice for about half the credits. Standard stays the default."
   },
   {

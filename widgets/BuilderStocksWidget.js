@@ -745,10 +745,10 @@ window.setStatus = function (t) { el("status").textContent = t || ""; el("busy")
 function renderEarn() {
   var E = D.earn || { next: [], last: [] }, h = '<div class="sr" style="border:none"><b>Earnings calls</b><span>Tap a call for its webcast, replay or a read-aloud of the prepared remarks</span></div>';
   var row = function (x, which) {
-    return '<div class="sr ecall" data-t="' + esc(x.t) + '" data-w="' + which + '" style="display:flex;justify-content:space-between;gap:8px;cursor:pointer' + (x.hi ? ';background:#3A3A3C;margin:0 -12px;padding:6px 12px;border-radius:8px;box-shadow:0 5px 10px -4px rgba(0,0,0,0.8)' : "") + '"><span style="color:#FFFFFF"><b style="display:inline">' + esc(x.t) + "</b> " + esc(x.name) + '</span><span style="text-align:right;white-space:nowrap">' + esc(x.day) + (x.when ? " · " + esc(x.when) : "") + (x.est ? ' <span style="color:#98989F">est.</span>' : "") + (which === "last" ? ' <span style="color:#64D2FF">▶︎</span>' : "") + "</span></div>";
+    return '<div class="sr ecall" data-t="' + esc(x.t) + '" data-w="' + which + '" style="display:flex;justify-content:space-between;gap:8px;cursor:pointer' + (x.hi ? ';background:#3A3A3C;margin:0 -12px;padding:6px 12px;border-radius:8px;box-shadow:0 5px 10px -4px rgba(0,0,0,0.8)' : "") + '"><span style="color:#FFFFFF"><b style="display:inline">' + esc(x.t) + "</b> " + esc(x.name) + '</span><span style="text-align:right;white-space:nowrap">' + esc(x.day) + (x.when ? " · " + esc(x.when) : "") + (x.est ? ' <span style="color:#98989F">est.</span>' : "") + (which === "last" && x.rec ? ' <span style="color:#30D158;font-size:12px;font-weight:600">🎧 ' + (x.rec === "full" ? "Recorded" : "Partly recorded") + "</span>" : "") + (which === "last" ? ' <span style="color:#64D2FF">▶︎</span>' : "") + "</span></div>";
   };
   if (E.next.length) { h += '<div class="sr"><span>Next</span></div>'; E.next.forEach(function (x) { h += row(x, "next"); }); }
-  if (E.last.length) { h += '<div class="sr"><span>Last call</span></div>'; E.last.forEach(function (x) { h += row(x, "last"); }); }
+  if (E.last.length) { h += '<div class="sr"><span>Last call' + (E.last.some(function (x) { return x.rec; }) ? " · 🎧 Recorded plays free; new recordings use ElevenLabs credits" : "") + '</span></div>'; E.last.forEach(function (x) { h += row(x, "last"); }); }
   if (!E.next.length && !E.last.length) h += '<div class="sr"><span>No dates yet: they come with the market caps from Yahoo.</span></div>';
   el("earn").innerHTML = h;
 }
@@ -1067,13 +1067,28 @@ function nextCall(s, tickers) {
   const now = Date.now();
   return tickers.map((t) => ({ t, e: (s.earn || {})[t] })).filter((x) => x.e && x.e.next && x.e.next > now - 6 * 3600e3).sort((a, b) => a.e.next - b.e.next)[0] || null;
 }
+// Listen recordings already on this phone for a call (any voice or quality):
+// "full" when a whole reading is saved, "part" when only some pieces are (credits ran out)
+function recordedState(files, t, at) {
+  const pre = `call-${t}-${new Date(at).toISOString().slice(0, 10)}-`;
+  let st = null;
+  for (const f of files) {
+    if (!f.startsWith(pre)) continue;
+    const rest = f.slice(pre.length); // voice[~s]-text fingerprint[-pN | -partial].mp3
+    if (/^[A-Za-z0-9]{1,8}(~s)?-[0-9a-f]{6}\.mp3$/.test(rest)) return "full";
+    if (/^[A-Za-z0-9]{1,8}(~s)?-[0-9a-f]{6}-(p\d+|partial)\.mp3$/.test(rest)) st = "part";
+  }
+  return st;
+}
 function earnRows(s, M) {
   const top = M.top.map((r) => r.t), out = { next: [], last: [] };
+  let files = [];
+  try { files = fm().listContents(fm().documentsDirectory()).filter((f) => f.startsWith("call-")); } catch (e) {}
   top.forEach((t) => {
     const e = (s.earn || {})[t];
     const name = (CANDIDATES.find((c) => c.t === t) || {}).name || t;
     if (e && e.next) { const w = callWhen(e.next, e.nextCall, e.nextEst); out.next.push({ t, name, at: e.next, day: w.day, when: w.when, est: !!e.nextEst, hi: t === HIGHLIGHT }); }
-    if (e && e.last) { const w = callWhen(e.last, null, e.lastEst); out.last.push({ t, name, at: e.last, day: w.day, hi: t === HIGHLIGHT }); }
+    if (e && e.last) { const w = callWhen(e.last, null, e.lastEst); out.last.push({ t, name, at: e.last, day: w.day, hi: t === HIGHLIGHT, rec: recordedState(files, t, e.last) }); }
   });
   out.next.sort((a, b) => a.at - b.at);
   out.last.sort((a, b) => b.at - a.at);
@@ -2147,7 +2162,7 @@ async function openApp() {
       try { req = await wv.evaluateJavaScript("window.__takeReq ? window.__takeReq() : ''"); } catch (e) {}
       if (req === "voice") { try { await voiceMenu(s); } catch (e) {} await push(); }
       if (req === "sec") { await askSecContact(); await refresh(s, false, say); await push(); }
-      if (req && req.startsWith("call:")) { const [, t, which] = req.split(":"); try { await openCall(s, t, which, say); } catch (e) { await say(""); await choose("Earnings call", String(e.message || e), ["OK"]); } }
+      if (req && req.startsWith("call:")) { const [, t, which] = req.split(":"); try { await openCall(s, t, which, say); await push(); /* show a new "Recorded" tag right away */ } catch (e) { await say(""); await choose("Earnings call", String(e.message || e), ["OK"]); } }
       if (!busy && marketOpenNow(s) && Date.now() - last > 3 * 60000) { last = Date.now(); busy = true; try { await refresh(s, true, null, push); } catch (e) {} busy = false; await push(); }
     }
   });
