@@ -219,8 +219,12 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "974386",
+   "hash": "643e34e8",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "Steadier Listen recordings: shorter pieces joined smoothly and steadier voice settings, to stop the voice drifting into a whisper. Page headers and page numbers are no longer read aloud. Calls you already recorded still play free."
+    },
     {
      "d": "2026-11-18",
      "t": "Past calls you've already recorded with ElevenLabs show a green \"Recorded\" tag (or \"Partly recorded\"), so you can see where credits went. Those play free."
@@ -228,10 +232,6 @@
     {
      "d": "2026-11-18",
      "t": "New under the Voice button: Saver quality, which records with ElevenLabs' Flash model in the same voice for about half the credits. Standard stays the default."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },

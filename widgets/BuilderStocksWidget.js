@@ -1022,7 +1022,9 @@ const TTS_MODELS = {
 };
 function ttsModel(s) { return TTS_MODELS[s.ttsQuality] || TTS_MODELS.standard; }
 const MAX_LISTEN_CHARS = 45000; // a safety cap only: the full prepared remarks run about 30 minutes
-const TTS_PIECE_CHARS = 4500; // recorded in pieces this size, at sentence ends
+const TTS_PIECE_CHARS = 1000; // short pieces, at sentence ends: long ones drift (whispering, tone changes)
+// steadier delivery: fewer swings in loudness and tone, a slightly flatter read
+const TTS_SETTINGS = { stability: 0.6, similarity_boost: 0.75, style: 0, use_speaker_boost: true };
 const KEY_NAME = "elevenlabs_api_key"; // shared with the Reports widget
 const ELEVENLABS_KEY = "";
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
@@ -1159,6 +1161,23 @@ async function findReplay(t) {
   }
   return out;
 }
+// A PDF's pages joined without what repeats on every page: headers, footers and
+// page numbers (otherwise the voice reads "Page 4 of 18" at every page turn)
+function withoutPageFurniture(pages) {
+  const norm = (l) => l.replace(/\s+/g, " ").trim().replace(/\d+/g, "#").toLowerCase();
+  const split = pages.map((p) => String(p).split("\n").map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean));
+  // lines near the top or bottom of a page that show up on many pages
+  const seen = {};
+  split.forEach((ls) => {
+    new Set(ls.slice(0, 4).concat(ls.slice(-4)).map(norm)).forEach((n) => { seen[n] = (seen[n] || 0) + 1; });
+  });
+  const many = Math.max(3, Math.ceil(split.length * 0.4));
+  const pageNo = /^(page\s*)?#+(\s*(of|\/)\s*#+)?$/i;
+  return split.map((ls) => ls.filter((l, k) => {
+    const n = norm(l), edge = k < 4 || k >= ls.length - 4;
+    return !(pageNo.test(n) || (edge && split.length >= 3 && seen[n] >= many && n.length < 160));
+  }).join(" ")).join(" ");
+}
 // The call's prepared remarks: the text up to where questions start
 function preparedRemarks(text) {
   const t = text.replace(/\s+/g, " ").trim();
@@ -1198,7 +1217,7 @@ async function findTranscript(t, at, step) {
       const path = fm().joinPath(fm().temporaryDirectory(), `len-${hit.tag}.pdf`);
       fm().write(path, hit.data);
       const o = await runPdfReader(path, "extractAll");
-      const text = (o.pages || []).join(" ");
+      const text = withoutPageFurniture(o.pages || []);
       if (text.length > 2000) return { text, src: `Lennar's transcript (${hit.tag.toUpperCase()})` };
     }
   }
@@ -1224,7 +1243,7 @@ async function findTranscript(t, at, step) {
       const path = fm().joinPath(fm().temporaryDirectory(), `grbk-${hit.tag.replace(" ", "-")}.pdf`);
       fm().write(path, hit.data);
       const o = await runPdfReader(path, "extractAll");
-      const text = (o.pages || []).join(" ");
+      const text = withoutPageFurniture(o.pages || []);
       if (text.length > 2000) return { text, src: `Green Brick's transcript (${hit.tag})` };
     }
   }
@@ -1329,6 +1348,22 @@ async function listenRemarks(s, t, at, tr, say) {
   const stem = `call-${t}-${new Date(at).toISOString().slice(0, 10)}-${voice.id.slice(0, 8)}${model.tag}`;
   const path = fm().joinPath(fm().documentsDirectory(), `${stem}-${updHash(text).slice(0, 6)}.mp3`);
   if (!fm().fileExists(path)) {
+    // an earlier full recording of this call (same voice and quality, before a fix changed the text): free to play
+    let older = null;
+    try {
+      older = fm().listContents(fm().documentsDirectory()).filter((f) => f.startsWith(stem + "-") && /^-[0-9a-f]{6}\.mp3$/.test(f.slice(stem.length)))[0] || null;
+    } catch (e) {}
+    if (older) {
+      const a = new Alert();
+      a.title = "Already recorded";
+      a.message = `You have a recording of this call from before the latest Listen fixes. Play it free, or record it again with the new settings (about ${Math.ceil(text.length * model.rate).toLocaleString("en-US")} ElevenLabs credits).`;
+      a.addAction("Play the saved recording");
+      a.addAction("Record it again");
+      a.addCancelAction("Cancel");
+      const pick = await a.present();
+      if (pick === 0) return playAudio(fm().joinPath(fm().documentsDirectory(), older));
+      if (pick !== 1) return;
+    }
     const pieces = splitForSpeech(text, TTS_PIECE_CHARS);
     const piecePath = (k) => path.replace(/\.mp3$/, `-p${k}.mp3`);
     const todo = pieces.map((x, k) => k).filter((k) => !fm().fileExists(piecePath(k)));
@@ -1345,9 +1380,11 @@ async function listenRemarks(s, t, at, tr, say) {
       return;
     }
     const pr = say ? progress(say) : null;
+    const ids = [];
     for (const k of todo) {
       if (pr) pr.set((pieces.length > 1 ? `Recording part ${k + 1} of ${pieces.length} with ${voice.name}` : `Recording the prepared remarks with ${voice.name}`) + (model.tag ? " (Saver)…" : "…"));
-      try { fm().write(piecePath(k), await elevenLabs(pieces[k], key, voice.id, model.id)); } catch (e) {
+      const ctx = { prev: k > 0 ? pieces[k - 1].slice(-400) : "", next: k < pieces.length - 1 ? pieces[k + 1].slice(0, 300) : "", prevIds: todo.indexOf(k - 1) >= 0 ? ids.slice() : [] };
+      try { fm().write(piecePath(k), await elevenLabs(pieces[k], key, voice.id, model.id, ctx)); if (ctx.lastId) ids.push(ctx.lastId); } catch (e) {
         if (pr) await pr.stop();
         if (keyProblem(e)) { await askKey(true); return; }
         if (!outOfCredits(e)) throw e;
@@ -1499,14 +1536,28 @@ async function askKey(again) {
   return k;
 }
 // ok elevenLabs
-async function elevenLabs(text, key, voiceId, modelId) {
-  const r = new Request(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_64`);
-  r.method = "POST";
-  r.timeoutInterval = 180;
-  r.headers = { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" };
-  r.body = JSON.stringify({ text, model_id: modelId || TTS_MODELS.standard.id });
-  const data = await r.load();
-  const code = (r.response && r.response.statusCode) || 0;
+async function elevenLabs(text, key, voiceId, modelId, ctx) {
+  const send = async (stitch) => {
+    const r = new Request(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_64`);
+    r.method = "POST";
+    r.timeoutInterval = 180;
+    r.headers = { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" };
+    const body = { text, model_id: modelId || TTS_MODELS.standard.id, voice_settings: TTS_SETTINGS };
+    // stitching: the text around this piece and the pieces just made, so tone and loudness carry across the joins
+    if (stitch && ctx) {
+      if (ctx.prev) body.previous_text = ctx.prev;
+      if (ctx.next) body.next_text = ctx.next;
+      if (ctx.prevIds && ctx.prevIds.length) body.previous_request_ids = ctx.prevIds.slice(-3);
+    }
+    r.body = JSON.stringify(body);
+    const data = await r.load();
+    const h = (r.response && r.response.headers) || {};
+    return { r, data, code: (r.response && r.response.statusCode) || 0, id: h["request-id"] || h["Request-Id"] || h["request_id"] || null };
+  };
+  let res = await send(true);
+  // a refused stitch (an old piece's id expired, or a model without stitching): try once plain
+  if ((res.code === 400 || res.code === 422) && ctx) res = await send(false);
+  const { data, code } = res;
   if (code !== 200) {
     let msg = "";
     let status = "";
@@ -1521,6 +1572,7 @@ async function elevenLabs(text, key, voiceId, modelId) {
     err.detail = msg;
     throw err;
   }
+  if (ctx) ctx.lastId = res.id;
   return data;
 }
 // ok accountVoices
