@@ -493,8 +493,12 @@
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA commentary, HUD, Fed) and builder investor decks",
    "needs": [],
    "sig": "// Reports Widget (small): a release calendar for the industry reports you",
-   "hash": "8d24b50d",
+   "hash": "819be930",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "MBA Forecast Commentary picks up every edition on MBA's archive page, including ones MBA posted as a web page (like October 2026), which open in Safari."
+    },
     {
      "d": "2026-11-18",
      "t": "Builder earnings-release cards removed: builder content is now just the investor decks. MBA Forecast Commentary is found from MBA's archive page, wherever MBA stores it."
@@ -502,10 +506,6 @@
     {
      "d": "2026-11-18",
      "t": "New card: Builder investor decks. The newest slide decks (not filings) from D.R. Horton, Lennar, Taylor Morrison, KB Home, Green Brick and Dream Finders, plus Pulte and Toll when they post one."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "MBA's card now holds MBA Forecast Commentary (commentary and charts) instead of the two forecast data-table PDFs."
     }
    ]
   }

@@ -497,36 +497,47 @@ function mbaCommentaryUrls(p) {
 const MBA_COMMENTARY_PAGE = "https://www.mba.org/forecasts-and-commentary/economic-commentary-archives";
 // MBA's archive page lists every commentary wherever MBA keeps it; file-name guesses are the fallback
 async function findMbaCommentary(have) {
-  let links = [];
+  // each entry on the archive page, dated from its label ("October 2026 Forecast Commentary"),
+  // or failing that from its file name (mar26, sep25-final, mar-2024, august-2024)
+  const dated = [], seen = new Set();
   try {
     const page = await getPage(MBA_COMMENTARY_PAGE);
     if (page.code < 400) {
-      const body = String(page.body).replace(/&amp;/g, "&"); // the raw page: its links are in the tags
-      for (const m of body.matchAll(/href="([^"]*forecast-commentary[^"]*\.pdf[^"]*)"/gi)) {
-        const u = m[1].startsWith("http") ? m[1] : "https://www.mba.org" + (m[1].startsWith("/") ? "" : "/") + m[1];
-        if (!links.includes(u)) links.push(u);
+      const body = String(page.body);
+      for (const m of body.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]{0,300}?)<\/a>/gi)) {
+        const href = m[1].replace(/&amp;/g, "&"), text = decodeHtml(m[2]).replace(/\s+/g, " ").trim();
+        let mi = -1, y = 0;
+        const t = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b.*commentary/i.exec(text);
+        if (t) { mi = MONF.findIndex((x) => x.toLowerCase() === t[1].toLowerCase()); y = +t[2]; }
+        else {
+          const f = decodeURIComponent(href.split("/").pop().split("?")[0]).toLowerCase();
+          const n = /forecast-commentary-([a-z]+)-?(\d{2}|\d{4})(?=[-.])/.exec(f);
+          if (!n) continue;
+          mi = MON3.indexOf(n[1].slice(0, 3));
+          y = n[2].length === 2 ? 2000 + +n[2] : +n[2];
+        }
+        if (mi < 0 || !y) continue;
+        const url = /^https?:/i.test(href) ? href : "https://www.mba.org" + (href.startsWith("/") ? "" : "/") + href;
+        const key = keyOf(y, mi);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        dated.push({ key, label: label(key), url });
       }
     }
   } catch (e) {}
-  // each link's month, from its name: mar26, sep25-final, mar-2024, august-2024
-  const dated = [];
-  for (const u of links) {
-    const f = decodeURIComponent(u.split("/").pop().split("?")[0]).toLowerCase();
-    const m = /forecast-commentary-([a-z]+)-?(\d{2}|\d{4})(?=[-.])/.exec(f);
-    if (!m) continue;
-    const mi = MON3.indexOf(m[1].slice(0, 3));
-    if (mi < 0) continue;
-    const y = m[2].length === 2 ? 2000 + +m[2] : +m[2];
-    dated.push({ key: keyOf(y, mi), label: label(keyOf(y, mi)), url: u });
-  }
   dated.sort((a, b) => (a.key < b.key ? 1 : -1));
   if (dated.length) {
     const known = new Set(have.map((h) => h.key)), out = [];
-    for (const d of dated) {
-      if (out.length + have.length >= KEEP * 2 || out.length >= KEEP) break;
+    for (const d of dated.slice(0, KEEP + 2)) {
+      if (out.length >= KEEP) break;
       if (known.has(d.key)) continue;
-      const h = await pdfThere(d.url);
-      if (h.ok) out.push({ key: d.key, label: d.label, url: d.url, posted: h.posted || (have.length ? todayIso() : null), est: !h.posted });
+      if (/\.pdf(\?|$)/i.test(d.url)) {
+        const h = await pdfThere(d.url);
+        if (h.ok) out.push({ key: d.key, label: d.label, url: d.url, posted: h.posted || (have.length ? todayIso() : null), est: !h.posted });
+      } else {
+        // posted as a web page, not a PDF: listed, and opened in Safari
+        out.push({ key: d.key, label: `${d.label} (web page)`, url: d.url, web: true, posted: have.length ? todayIso() : null, est: true });
+      }
     }
     if (out.length || have.length) return out;
   }
@@ -1378,6 +1389,14 @@ async function handle(s, q, say) {
     const book = bookById(q.id), st = s.books[q.id];
     const ed = st && st.eds.find((e) => e.key === q.key);
     if (!book || !ed) return;
+    // an edition that's a web page (MBA posted October 2026's commentary as a press release): open the page
+    if (ed.web) {
+      await Safari.openInApp(ed.url, false);
+      ed.opened = true;
+      s.openedKeys[`${book.id}:${ed.key}`] = true;
+      saveStore(s);
+      return;
+    }
     let part = null;
     if (book.parts) {
       const pick = await choose(book.name, `${ed.label}${ed.posted && !ed.est ? " · posted " + shortDate(ed.posted) : ""}`, book.parts.map((p) => "\u{1F4D6} " + p.name));
