@@ -128,6 +128,10 @@
  "BuilderStocksWidget.js": [
   {
    "d": "2026-11-18",
+   "t": "New under the Voice button: Saver quality, which records with ElevenLabs' Flash model in the same voice for about half the credits. Standard stays the default."
+  },
+  {
+   "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
   {

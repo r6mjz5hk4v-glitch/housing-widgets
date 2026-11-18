@@ -1015,7 +1015,12 @@ const IR_EVENTS = { LEN: "https://investors.lennar.com/events-and-presentations"
 // Motley Fool's transcript pages are named for the company: /2026/07/22/dr-horton-dhi-q3-2026-earnings-call-transcript/
 const FOOL = { DHI: "dr-horton", LEN: "lennar", PHM: "pultegroup", NVR: "nvr", TOL: "toll-brothers", TMHC: "taylor-morrison-home", MTH: "meritage-homes", KBH: "kb-home", DFH: "dream-finders-homes", CCS: "century-communities", MHO: "mi-homes", TPH: "tri-pointe-homes", GRBK: "green-brick-partners", LGIH: "lgi-homes", BZH: "beazer-homes-usa", HOV: "hovnanian-enterprises" };
 const VOICE_NAME = setting("voice_name", "Bert"); // the ElevenLabs voice that reads the calls
-const TTS_MODEL = "eleven_multilingual_v2";
+// Recording quality, chosen under the Voice button. Credits are per character.
+const TTS_MODELS = {
+  standard: { id: "eleven_multilingual_v2", rate: 1, name: "Standard", tag: "" },
+  saver: { id: "eleven_flash_v2_5", rate: 0.5, name: "Saver", tag: "~s" },
+};
+function ttsModel(s) { return TTS_MODELS[s.ttsQuality] || TTS_MODELS.standard; }
 const MAX_LISTEN_CHARS = 45000; // a safety cap only: the full prepared remarks run about 30 minutes
 const TTS_PIECE_CHARS = 4500; // recorded in pieces this size, at sentence ends
 const KEY_NAME = "elevenlabs_api_key"; // shared with the Reports widget
@@ -1305,13 +1310,14 @@ async function listenRemarks(s, t, at, tr, say) {
   const voice = await bertVoice(s, key);
   if (!voice) return;
   // one recording per call, voice and text (a fixed transcript gets a fresh recording)
-  const stem = `call-${t}-${new Date(at).toISOString().slice(0, 10)}-${voice.id.slice(0, 8)}`;
+  const model = ttsModel(s);
+  const stem = `call-${t}-${new Date(at).toISOString().slice(0, 10)}-${voice.id.slice(0, 8)}${model.tag}`;
   const path = fm().joinPath(fm().documentsDirectory(), `${stem}-${updHash(text).slice(0, 6)}.mp3`);
   if (!fm().fileExists(path)) {
     const pieces = splitForSpeech(text, TTS_PIECE_CHARS);
     const piecePath = (k) => path.replace(/\.mp3$/, `-p${k}.mp3`);
     const todo = pieces.map((x, k) => k).filter((k) => !fm().fileExists(piecePath(k)));
-    const need = todo.reduce((n, k) => n + pieces[k].length, 0);
+    const need = Math.ceil(todo.reduce((n, k) => n + pieces[k].length, 0) * model.rate);
     // warn before spending when the key can see the balance and it's short
     const left = await creditsLeft(key);
     if (left != null && left < need) {
@@ -1325,14 +1331,14 @@ async function listenRemarks(s, t, at, tr, say) {
     }
     const pr = say ? progress(say) : null;
     for (const k of todo) {
-      if (pr) pr.set(pieces.length > 1 ? `Recording part ${k + 1} of ${pieces.length} with ${voice.name}…` : `Recording the prepared remarks with ${voice.name}…`);
-      try { fm().write(piecePath(k), await elevenLabs(pieces[k], key, voice.id)); } catch (e) {
+      if (pr) pr.set((pieces.length > 1 ? `Recording part ${k + 1} of ${pieces.length} with ${voice.name}` : `Recording the prepared remarks with ${voice.name}`) + (model.tag ? " (Saver)…" : "…"));
+      try { fm().write(piecePath(k), await elevenLabs(pieces[k], key, voice.id, model.id)); } catch (e) {
         if (pr) await pr.stop();
         if (keyProblem(e)) { await askKey(true); return; }
         if (!outOfCredits(e)) throw e;
         // out partway: play what was made (pieces stay saved; the next Listen records only the rest)
         const made = pieces.map((x, n) => n).filter((n) => fm().fileExists(piecePath(n)));
-        if (!made.length || made[0] !== 0) return creditsAlert(e, text);
+        if (!made.length || made[0] !== 0) return creditsAlert(e, text, need);
         let run = 0; while (run < made.length && made[run] === run) run++;
         const part = path.replace(/\.mp3$/, "-partial.mp3");
         fm().write(part, joinMp3(made.slice(0, run).map((n) => fm().read(piecePath(n)))));
@@ -1354,7 +1360,9 @@ async function listenRemarks(s, t, at, tr, say) {
     // tidy up: the pieces, a partial copy, and older recordings of this call in this voice
     try {
       fm().listContents(fm().documentsDirectory()).forEach((f) => {
-        if (f.startsWith(stem) && f.endsWith(".mp3") && fm().joinPath(fm().documentsDirectory(), f) !== path) fm().remove(fm().joinPath(fm().documentsDirectory(), f));
+        // this call, voice and quality only (the other quality's recording stays, for comparing)
+        const mine = f.startsWith(stem + "-") && /^-[0-9a-f]{1,8}(-p\d+|-partial)?\.mp3$/.test(f.slice(stem.length));
+        if (mine && fm().joinPath(fm().documentsDirectory(), f) !== path) fm().remove(fm().joinPath(fm().documentsDirectory(), f));
       });
     } catch (e) {}
   }
@@ -1437,7 +1445,7 @@ async function getKey() {
 function hasVoiceKey() { return !!ELEVENLABS_KEY.trim() || (Keychain.contains(KEY_NAME) && !!Keychain.get(KEY_NAME)); }
 function voiceName(s) { return (s.voicePicked && s.voice && s.voice.name) || VOICE_NAME; }
 // what Listen will read with, for the button and the menu
-function voiceLabel(s) { return !s.iphoneVoice && hasVoiceKey() ? voiceName(s) + " (ElevenLabs)" : "iPhone voice"; }
+function voiceLabel(s) { return !s.iphoneVoice && hasVoiceKey() ? voiceName(s) + (ttsModel(s).tag ? " (ElevenLabs, Saver)" : " (ElevenLabs)") : "iPhone voice"; }
 // The Voice button: switch between ElevenLabs and the iPhone voice, pick a voice, add or replace the key
 async function voiceMenu(s) {
   const has = hasVoiceKey(), opts = [];
@@ -1446,12 +1454,14 @@ async function voiceMenu(s) {
     if (s.iphoneVoice) opts.push(["Use ElevenLabs (" + voiceName(s) + ")", useEleven]);
     else opts.push(["Use the iPhone voice", async () => { s.iphoneVoice = true; saveStore(s); }]);
     opts.push(["Pick a different ElevenLabs voice", async () => { const k = await getKey(); if (k && (await chooseVoice(s, k))) await useEleven(); }]);
+    if (ttsModel(s).tag) opts.push(["Use Standard quality (about 1 credit per character)", async () => { s.ttsQuality = "standard"; await useEleven(); }]);
+    else opts.push(["Use Saver quality (about ½ credit per character)", async () => { s.ttsQuality = "saver"; await useEleven(); }]);
     opts.push(["Replace the ElevenLabs key", async () => { if (await askKey(false)) await useEleven(); }]);
   } else {
     opts.push(["Add an ElevenLabs key", async () => { if (await askKey(false)) await useEleven(); }]);
     opts.push(["Get a key at elevenlabs.io", async () => Safari.openInApp("https://elevenlabs.io/app/settings/api-keys", false)]);
   }
-  const msg = "Listen reads with: " + voiceLabel(s) + (has ? "" : "\n\nWithout an ElevenLabs key, the iPhone's built-in voice reads. With one, a natural ElevenLabs voice does.");
+  const msg = "Listen reads with: " + voiceLabel(s) + (has ? "\n\nStandard quality uses about 1 ElevenLabs credit per character; Saver uses about half, in the same voice. Switching makes a new recording the next time you tap Listen." : "\n\nWithout an ElevenLabs key, the iPhone's built-in voice reads. With one, a natural ElevenLabs voice does.");
   const i = await choose("Voice for Listen", msg, opts.map((o) => o[0]));
   if (i >= 0) await opts[i][1]();
 }
@@ -1474,12 +1484,12 @@ async function askKey(again) {
   return k;
 }
 // ok elevenLabs
-async function elevenLabs(text, key, voiceId) {
+async function elevenLabs(text, key, voiceId, modelId) {
   const r = new Request(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_64`);
   r.method = "POST";
   r.timeoutInterval = 180;
   r.headers = { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" };
-  r.body = JSON.stringify({ text, model_id: TTS_MODEL });
+  r.body = JSON.stringify({ text, model_id: modelId || TTS_MODELS.standard.id });
   const data = await r.load();
   const code = (r.response && r.response.statusCode) || 0;
   if (code !== 200) {
@@ -1572,13 +1582,13 @@ function outOfCredits(e) {
   return /quota|credits? (remaining|required)|exceeds your|out of credits|insufficient/i.test(`${e.status || ""} ${e.detail || e.message || ""}`);
 }
 // ok creditsAlert
-async function creditsAlert(e, text) {
+async function creditsAlert(e, text, need) {
   const m = /have\s+([\d,]+)\s+credits?\s+remaining[^\d]+([\d,]+)\s+credits?\s+(?:are\s+)?required/i.exec(e.detail || e.message || "");
   const a = new Alert();
   a.title = "Out of ElevenLabs credits";
   a.message = (m
     ? `This reading needs about ${m[2]} credits; you have ${m[1]} left this month.`
-    : `ElevenLabs says you're out of credits for this reading (it needs about ${text.length.toLocaleString("en-US")}).`) +
+    : `ElevenLabs says you're out of credits for this reading (it needs about ${(need || text.length).toLocaleString("en-US")}).`) +
     "\n\nCredits reset when your plan renews. Recordings you've already made still play free.";
   a.addAction("Read it with the iPhone voice");
   a.addCancelAction("OK");

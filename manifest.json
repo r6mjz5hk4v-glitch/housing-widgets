@@ -219,8 +219,12 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "a408f4b6",
+   "hash": "88fb267f",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "New under the Voice button: Saver quality, which records with ElevenLabs' Flash model in the same voice for about half the credits. Standard stays the default."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -228,10 +232,6 @@
     {
      "d": "2026-11-18",
      "t": "Listen now reads the full prepared remarks (about 30 minutes for Lennar), instead of stopping when an executive mentions the Q&A early. It checks your ElevenLabs credits first, and saves what it made if they run out. Next-call dates no longer show last quarter's date."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
