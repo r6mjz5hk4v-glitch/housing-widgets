@@ -1246,7 +1246,7 @@ const JOBS_HTML = `<!DOCTYPE html>
 <div class="sec" id="s1"><div class="st"><span class="dot" id="d1"></span><b>Layoffs</b><span class="val" id="v1" style="text-align:right;line-height:1.2"></span></div><div class="vd" id="vd1"></div>
   <div class="bchips" id="g1"></div>
   <div class="wrap"><svg class="chart" id="c1"></svg><div class="touch" id="t1"></div></div>
-  <div class="ds"><span style="color:#FF453A;font-weight:600">Red: initial unemployment claims, 4-week average</span> (Labor Dept., weekly): people who filed for benefits. The <span style="color:#FFFFFF;font-weight:600">dotted line</span> is the 2019 average; above it pushes unemployment up. There are more jobs than in 2019, so the call (upward / neutral / downward) uses claims per 1,000 jobs, shown in the readout. <span style="color:#FF9F0A;font-weight:600">Orange: JOLTS layoffs and discharges</span> (BLS employer survey, monthly, about six weeks behind) as a weekly pace, the monthly total divided by the weeks in the month. It counts everyone let go, filed or not, so the gap above the red line is layoffs that never became a claim. <span style="color:#C7C7CC;font-weight:600">Gray dots: news mentions</span> (GDELT, since 2017): the share of US English-language news articles that say &ldquo;layoff&rdquo; or &ldquo;layoffs&rdquo;, 4-week average, on its own scale at the right, set so its 2019 average sits on the dotted 2019 line. Above the line, layoffs are in the news more than in 2019; the gap from the red line is headlines running ahead of (or behind) actual claims.</div></div>
+  <div class="ds"><span style="color:#FF453A;font-weight:600">Red: initial unemployment claims, 4-week average</span> (Labor Dept., weekly): people who filed for benefits. The <span style="color:#FFFFFF;font-weight:600">dotted line</span> is the 2019 average; above it pushes unemployment up. There are more jobs than in 2019, so the call (upward / neutral / downward) uses claims per 1,000 jobs, shown in the readout. <span style="color:#FF9F0A;font-weight:600">Orange: JOLTS layoffs and discharges</span> (BLS employer survey, monthly, about six weeks behind) as a weekly pace, the monthly total divided by the weeks in the month. It counts everyone let go, filed or not, so the gap above the red line is layoffs that never became a claim. <span style="color:#C7C7CC;font-weight:600">Gray dots: news mentions</span> (GDELT, since 2017): the share of US English-language news articles that say &ldquo;layoff&rdquo; or &ldquo;layoffs&rdquo;, 13-week average, on its own scale at the right, fitted to the dates shown. The readout compares it with its 2019 average. Watch for headlines running ahead of (or behind) actual claims.</div></div>
 <div class="sec" id="s8"><div class="st"><span class="dot" style="background:#64A8FF"></span><b>Expected vs actual job loss</b><span class="val" id="v8" style="color:#64A8FF;text-align:right;line-height:1.2;font-size:14.5px;white-space:nowrap"></span></div>
   <div class="bchips"><span class="bchip" style="color:#64A8FF;cursor:default"><i style="background:#64A8FF"></i>Expected (survey)</span><span class="bchip" style="color:#FF9F0A;cursor:default"><i style="background:#FF9F0A"></i>Actual layoffs</span></div>
   <div class="wrap"><svg class="chart" id="c8" style="height:200px"></svg><div class="touch" id="t8"></div></div>
@@ -1305,8 +1305,8 @@ function prep() {
   S.lay = conv(D.press.lay); S.cont = conv(D.press.cont); S.hire = conv(D.press.hire, true);
   S.ur = conv(D.ur, true); S.sahm = conv(D.sahm, true); S.epop = conv(D.epop, true); S.rprob = conv(D.rprob, true);
   S.jloss = conv(D.jloss, true); S.jfind = conv(D.jfind, true); S.layAct = conv(D.layAct, true); S.findAct = conv(D.findAct, true); S.layWk = conv(D.layWk || [], true);
-  S.news = conv(D.newsWk || []); S.newsF = D.news19 ? D.baseK.lay / D.news19 : 0;
-  S.newsM = S.news.map(function (p) { return { n: p.n, v: p.v * S.newsF, d: p.d, r: p.v / D.news19 }; });
+  S.news = conv(D.newsWk || []); S.newsF = D.news19 ? 1 : 0;
+  S.newsM = S.news.map(function (p) { return { n: p.n, v: p.v, d: p.d, r: p.v / D.news19 }; });
   S.jloss.forEach(function (p, i) { p.s = D.jloss[i].s; });
   S.anx = conv(D.anx, true); S.anx.forEach(function (p, i) { p.q = D.anx[i].q; p.s = D.anx[i].s; });
   S.anxFc = (D.anxFc || []).map(function (r) { var pts = conv(r.pts, true); pts.forEach(function (p, i) { p.q = r.pts[i].q; }); return { s: r.s, pts: pts }; });
@@ -1493,10 +1493,22 @@ function setVerdict(id, word, c) { el(id).innerHTML = word ? '<b style="color:' 
 function fmtK(v) { return v >= 1000 ? (v / 1000).toFixed(2) + "M" : Math.round(v) + "K"; }
 var jlOff = false, nwOff = false, NEWSC = "#C7C7CC";
 function dotsPath(F, arr, color, width, gap) { return path(F, arr, color, width, gap).split('stroke-linejoin="round" stroke-linecap="round"').join('stroke-dasharray="0.1 4.2" stroke-linejoin="round" stroke-linecap="round"'); }
-// the news line's own scale: % of articles, ticks at the right edge
-function newsAxis(F, sc) {
-  var lo = sc.lo / S.newsF, hi = sc.hi / S.newsF, st = niceStep(hi - lo, 4), dec = st >= 0.1 ? 1 : st >= 0.01 ? 2 : 3, s = "";
-  for (var v = Math.ceil(lo / st) * st; v <= hi + 1e-12; v += st) s += '<text x="' + (F.R + 4) + '" y="' + (F.Y(v * S.newsF) + 3.5).toFixed(1) + '" fill="' + NEWSC + '" font-size="9.5" text-anchor="start">' + v.toFixed(dec) + "%</text>";
+// The news line gets its own scale: its range over the dates shown, stretched to
+// the chart's full height (lo..hi in claims units), so its peaks never flatten
+function newsFit(arr, a, b, lo, hi) {
+  var v = arr.filter(function (p) { return p.n >= a && p.n <= b; }).map(function (p) { return p.v; });
+  if (!v.length) return null;
+  var nlo = Math.min.apply(null, v), nhi = Math.max.apply(null, v), pd = (nhi - nlo) * 0.1 || nhi * 0.1 || 0.01;
+  nlo = Math.max(0, nlo - pd); nhi += pd;
+  var f = { lo: nlo, hi: nhi, map: function (x) { return lo + (x - nlo) / (nhi - nlo) * (hi - lo); } };
+  f.pts = arr.map(function (p) { return { n: p.n, v: f.map(p.v), d: p.d, r: p.r }; });
+  return f;
+}
+function newsDec(st) { return st >= 0.1 ? 1 : st >= 0.01 ? 2 : 3; }
+// its scale: % of articles, ticks at the right edge
+function newsAxis(F, nf) {
+  var st = niceStep(nf.hi - nf.lo, 4), s = "";
+  for (var v = Math.ceil(nf.lo / st) * st; v <= nf.hi + 1e-12; v += st) s += '<text x="' + (F.R + 4) + '" y="' + (F.Y(nf.map(v)) + 3.5).toFixed(1) + '" fill="' + NEWSC + '" font-size="9.5" text-anchor="start">' + v.toFixed(newsDec(st)) + "%</text>";
   return s;
 }
 function claimsScale(arr, base, extra) {
@@ -1512,16 +1524,17 @@ function drawDrivers() {
   CLAIMS.forEach(function (c, k) {
     var jl = k === 0 && (S.layWk || []).length && !jlOff ? S.layWk : null;
     var nw = k === 0 && S.newsM.length && S.newsF && !nwOff ? S.newsM : null;
-    var svg = el("c" + (k + 1)), sr = SER[k], base = D.baseK[c.key], sc = claimsScale(S[c.k], base, (jl || []).concat(nw || []));
+    var svg = el("c" + (k + 1)), sr = SER[k], base = D.baseK[c.key], sc = claimsScale(S[c.k], base, jl);
     if (!sc) { svg.innerHTML = ""; return; }
-    var F = frame(svg, sc.lo, sc.hi, fmtK, nw ? 40 : 10), s = F.head, yb = F.Y(base);
-    s += '<rect x="' + F.L + '" y="' + F.T + '" width="' + (F.R - F.L) + '" height="' + Math.max(0, yb - F.T).toFixed(1) + '" fill="#FF453A" fill-opacity="0.07"/>';
+    var nf = nw ? newsFit(nw, view.a, view.b, sc.lo, sc.hi) : null;
+    var F = frame(svg, sc.lo, sc.hi, fmtK, nf ? 40 : 10), s = F.head, yb = F.Y(base);
+    if (k !== 0) s += '<rect x="' + F.L + '" y="' + F.T + '" width="' + (F.R - F.L) + '" height="' + Math.max(0, yb - F.T).toFixed(1) + '" fill="#FF453A" fill-opacity="0.07"/>'; // no shading on Layoffs
     s += '<line x1="' + F.L + '" x2="' + F.R + '" y1="' + yb.toFixed(1) + '" y2="' + yb.toFixed(1) + '" stroke="#FFFFFF" stroke-opacity="0.6" stroke-dasharray="2 3" stroke-width="1.4"/>';
     s += '<text x="' + (F.R - 2) + '" y="' + (yb - 4).toFixed(1) + '" fill="#FFFFFF" fill-opacity="0.7" font-size="9.5" text-anchor="end">2019 avg ' + fmtK(base) + '</text>';
-    if (nw) s += dotsPath(F, nw, NEWSC, 2.2, 10) + newsAxis(F, sc);
+    if (nf) s += dotsPath(F, nf.pts, NEWSC, 2.2, 10) + newsAxis(F, nf);
     if (jl) s += path(F, jl, "#FF9F0A", 1.8, 40);
     s += path(F, S[c.k], sr.color, 2.4);
-    var r = at(S[c.k], n, 10), rp = at(S[c.raw], n, 10), vd = verdict(c.key, n), rj = jl ? at(jl, n, 70) : null, rn = nw ? at(nw, n, 10) : null;
+    var r = at(S[c.k], n, 10), rp = at(S[c.raw], n, 10), vd = verdict(c.key, n), rj = jl ? at(jl, n, 70) : null, rn = nf ? at(nf.pts, n, 10) : null;
     svg.innerHTML = s + cursorLine(F) + (rn ? dot(F, rn, NEWSC, sc.lo, sc.hi) : "") + (rj ? dot(F, rj, "#FF9F0A", sc.lo, sc.hi) : "") + dot(F, r, sr.color, sc.lo, sc.hi);
     if (k === 0) el("g1").innerHTML = (S.layWk || []).length || S.newsM.length ? '<span class="bchip" style="color:' + RED + ';cursor:default"><i style="background:' + RED + '"></i>Claims, 4-wk avg.</span>' +
       ((S.layWk || []).length ? '<span class="bchip' + (jlOff ? " off" : "") + '" data-k="jl" style="color:#FF9F0A"><i style="background:#FF9F0A"></i>JOLTS layoffs, weekly pace</span>' : "") +
@@ -2469,7 +2482,7 @@ window.printPdf = function (jsPDF, fonts) {
   // ---- the four driver charts, drawn into either half of a slide ----
   var GROW = D.jobGrowth != null ? " Payroll jobs are " + Math.abs(D.jobGrowth).toFixed(1) + "% " + (D.jobGrowth >= 0 ? "above" : "below") + " 2019, so the verdict uses claims per 1,000 jobs." : "";
   var WHAT = {
-    lay: "Initial unemployment claims, 4-week average: a weekly read on people leaving jobs. The dotted line is the 2019 average; above it (red) pushes unemployment up." + GROW + ((S.layWk || []).length && !jlOff ? " Orange: JOLTS layoffs and discharges as a weekly pace (monthly total / weeks in the month); the gap above claims is layoffs that never became a claim." : "") + (S.newsM.length && S.newsF && !nwOff ? " Gray dots: share of US news articles saying layoff(s) (GDELT, 4-week average, right scale), set so its 2019 average sits on the dotted line." : ""),
+    lay: "Initial unemployment claims, 4-week average: a weekly read on people leaving jobs. The dotted line is the 2019 average; above it (red) pushes unemployment up." + GROW + ((S.layWk || []).length && !jlOff ? " Orange: JOLTS layoffs and discharges as a weekly pace (monthly total / weeks in the month); the gap above claims is layoffs that never became a claim." : "") + (S.newsM.length && S.newsF && !nwOff ? " Gray dots: share of US news articles saying layoff(s) (GDELT, 13-week average, right scale), fitted to the dates shown." : ""),
     cont: "People still collecting unemployment benefits, 4-week average: how long job searches take. Dotted line: the 2019 average; above it (red) pushes unemployment up." + GROW +
       " Only people on benefits count, so this can fall when benefits run out (usually after 26 weeks), not just when people find work.",
   };
@@ -2480,27 +2493,28 @@ window.printPdf = function (jsPDF, fonts) {
     var nwP = c.key === "lay" && !nwOff && S.newsF ? S.newsM.filter(function (p) { return p.n >= a && p.n <= b; }) : [];
     chartTitle(x, half, title, "Weekly, 4-week average" + (rp ? " - " + c.per(rp.v) + " per 1,000 jobs at the latest reading" : ""), top);
     if (arr.length) {
-      var v = arr.concat(jw).concat(nwP).map(function (p) { return p.v; }).concat([base]);
+      var v = arr.concat(jw).map(function (p) { return p.v; }).concat([base]);
       var lo = Math.min.apply(null, v), hi = Math.min(base * (1 + D.capHi / 100), Math.max.apply(null, v)), pd = (hi - lo) * 0.08;
       var FC = frameP(x + 40, x + half - 50, top + 48, H - 44 - (jw.length || nwP.length ? 100 : 88), Math.max(0, lo - pd), hi + pd, fmtK); // room for the key above the caption
-      doc.setFillColor(253, 238, 238); doc.rect(FC.L, FC.T, FC.R - FC.L, Math.max(0, FC.Y(base) - FC.T), "F");
+      if (c.key !== "lay") { doc.setFillColor(253, 238, 238); doc.rect(FC.L, FC.T, FC.R - FC.L, Math.max(0, FC.Y(base) - FC.T), "F"); }
       dotted(FC, base, [90, 90, 95], "2019 avg " + fmtK(base));
+      var nfP = nwP.length ? newsFit(nwP, a, b, FC.lo, FC.hi) : null;
       var PJ = [214, 120, 0], PN = [130, 130, 136];
       if (nwP.length) {
         doc.setLineCap && doc.setLineCap("round"); if (doc.setLineDashPattern) doc.setLineDashPattern([0.1, 3.2], 0);
-        lineP(FC, S.newsM, PN, 1.8, 10);
+        lineP(FC, nfP.pts, PN, 1.8, 10);
         if (doc.setLineDashPattern) doc.setLineDashPattern([], 0); doc.setLineCap && doc.setLineCap("butt");
       }
       if (jw.length) lineP(FC, S.layWk, PJ, 1.5, 40);
       lineP(FC, S[c.k], col, 2);
-      var lc = arr[arr.length - 1], lj = jw.length ? jw[jw.length - 1] : null, ln = nwP.length ? nwP[nwP.length - 1] : null;
+      var lc = arr[arr.length - 1], lj = jw.length ? jw[jw.length - 1] : null, ln = nfP ? nfP.pts.filter(function (p) { return p.n <= b; }).pop() : null;
       var items = [{ y: FC.Y(lc.v), v: fmtK(lc.v), t: "", c: col }].concat(lj ? [{ y: FC.Y(lj.v), v: fmtK(lj.v), t: "JOLTS", c: PJ }] : []).concat(ln ? [{ y: FC.Y(ln.v), v: ln.r.toFixed(1) + "x", t: "news", c: PN }] : []);
       endLabels(FC, items);
       if (ln) {
         // the news line's own scale (% of articles) at the right, skipping ticks that would sit on a label
-        var nlo = FC.lo / S.newsF, nhi = FC.hi / S.newsF, nst = niceStep(nhi - nlo, 4), ndec = nst >= 0.1 ? 1 : nst >= 0.01 ? 2 : 3;
-        for (var nv = Math.ceil(nlo / nst) * nst; nv <= nhi + 1e-12; nv += nst) {
-          var ny = FC.Y(nv * S.newsF);
+        var nst = niceStep(nfP.hi - nfP.lo, 4), ndec = newsDec(nst);
+        for (var nv = Math.ceil(nfP.lo / nst) * nst; nv <= nfP.hi + 1e-12; nv += nst) {
+          var ny = FC.Y(nfP.map(nv));
           if (items.every(function (it) { return Math.abs(it.y - ny) > 11; })) { font(false, 7.5, PN); doc.text(nv.toFixed(ndec) + "%", FC.R + 6, ny + 3); }
         }
       }
@@ -3154,8 +3168,8 @@ async function fetchUnemployment() {
 // The GDELT Project's DOC 2.0 API: each day's share of US English-language news
 // articles (in GDELT's monitored sources) that mention "layoff" or "layoffs"
 // ("Volume Intensity", % of all articles that day), from January 2017, the
-// earliest it searches. Turned into 4-week averages ending each Saturday, to
-// match the claims weeks, plus the 2019 average as the baseline. One download,
+// earliest it searches. Turned into 13-week averages ending each Saturday (news
+// comes in bursts, so a shorter window is mostly noise), plus the 2019 average. One download,
 // at most twice a day, in the app only; the widget keeps the last copy.
 const NEWS_FILE = "gdelt-layoff-news.json";
 const NEWS_CHECK_HOURS = 12;
@@ -3164,20 +3178,20 @@ function newsWeeks(days) {
   const byDay = new Map(days.map((p) => [p.d, p.v])), out = [];
   const iso = (t) => new Date(t).toISOString().slice(0, 10);
   if (!days.length) return out;
-  let t = Date.parse(days[0].d + "T12:00:00Z") + 27 * 864e5;
+  let t = Date.parse(days[0].d + "T12:00:00Z") + 90 * 864e5;
   while (new Date(t).getUTCDay() !== 6) t += 864e5;
   const end = Date.parse(days[days.length - 1].d + "T12:00:00Z");
   for (; t <= end; t += 7 * 864e5) {
     let sum = 0, n = 0;
-    for (let k = 0; k < 28; k++) { const v = byDay.get(iso(t - k * 864e5)); if (v != null) { sum += v; n++; } }
-    if (n >= 20) out.push({ d: iso(t), v: Math.round((sum / n) * 10000) / 10000 });
+    for (let k = 0; k < 91; k++) { const v = byDay.get(iso(t - k * 864e5)); if (v != null) { sum += v; n++; } }
+    if (n >= 65) out.push({ d: iso(t), v: Math.round((sum / n) * 10000) / 10000 });
   }
   return out;
 }
 async function newsJobs() {
   const kept = readJson("docs", NEWS_FILE);
   if (config.runsInWidget) return kept;
-  if (kept && kept.checked && !kept.error && (Date.now() - new Date(kept.checked).getTime()) / 3600000 < NEWS_CHECK_HOURS) return kept;
+  if (kept && kept.v === 2 && kept.checked && !kept.error && (Date.now() - new Date(kept.checked).getTime()) / 3600000 < NEWS_CHECK_HOURS) return kept;
   try {
     // through yesterday: today's articles are still coming in
     const r = new Request(NEWS_URL(new Date().toISOString().slice(0, 10).split("-").join("")));
@@ -3190,7 +3204,7 @@ async function newsJobs() {
     if (!data || data.length < 100) throw new Error("GDELT's answer had no timeline");
     const days = data.map((p) => ({ d: `${p.date.slice(0, 4)}-${p.date.slice(4, 6)}-${p.date.slice(6, 8)}`, v: +p.value })).filter((p) => isFinite(p.v));
     const y19 = days.filter((p) => p.d.startsWith("2019"));
-    const out = { checked: new Date().toISOString(), wk: newsWeeks(days), base19: y19.length ? y19.reduce((t, p) => t + p.v, 0) / y19.length : null, last: days[days.length - 1].d };
+    const out = { v: 2, checked: new Date().toISOString(), wk: newsWeeks(days), base19: y19.length ? y19.reduce((t, p) => t + p.v, 0) / y19.length : null, last: days[days.length - 1].d };
     writeJson("docs", NEWS_FILE, out);
     return out;
   } catch (e) {

@@ -404,6 +404,10 @@
  "UnemploymentWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "Calmer Layoffs chart: the news line is now a 13-week average on its own right-side scale (no more flat tops), and the red shading is gone from this chart. The first open after updating re-downloads the news data."
+  },
+  {
+   "d": "2026-11-19",
    "t": "The Layoffs chart now overlays news mentions of \"layoff\"/\"layoffs\" (GDELT, since 2017) as gray dots on their own right-side scale, lined up so 2019's level sits on the dotted 2019 line. Tap its chip to hide it; the PDF Layoffs slide shows it too, with a new release-schedule row."
   },
   {
