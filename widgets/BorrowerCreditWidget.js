@@ -15,9 +15,8 @@ function setting(key, fallback) {
 // How borrower credit is holding up, from two public New York Fed sources:
 // - Quarterly Report on Household Debt and Credit (NY Fed Consumer Credit
 //   Panel / Equifax), a spreadsheet each quarter (hhd_c_report_YYYYqN.xlsx):
-//   new seriously delinquent balances by loan type (page 14), where 30-60-day
-//   late mortgages go next quarter (page 16), mortgage originations by credit
-//   score (page 6) and the median score of new mortgages (page 7).
+//   new seriously delinquent balances by loan type (page 14) and where 30-60-day
+//   late mortgages go next quarter (page 16).
 // - SCE Credit Access Survey (Feb, Jun, Oct), frbny-sce-credit-access-data.xlsx:
 //   rejection rates for mortgage and refinance applications, and discouraged
 //   borrowers (didn't apply because they expected a no).
@@ -1337,7 +1336,7 @@ window.onerror = function (m, src, line) { var e = document.getElementById("errs
 </head>
 <body>
 <div class="ticker">Borrower Credit</div>
-<div class="hint">Delinquency, credit scores and rejections · New York Fed and HUD</div>
+<div class="hint">Delinquency and rejections · New York Fed and HUD</div>
 <div id="sched" style="display:none"></div>
 <div class="hint" id="win"></div>
 <div class="hint warn" id="errs"></div>
@@ -1376,7 +1375,7 @@ var CH = [
     lines: [["sdq", "Serious", "#FF453A"], ["d30", "30-day", "#FFD60A"], ["d60", "60-day", "#FF9F0A"]] },
 ];
 // on screen, FHA sits right under "Going seriously delinquent"
-var ORDER = [0, 5, 1, 2, 3, 4], FHA_MSG = "";
+var ORDER = [0, 5, 1, 4], FHA_MSG = "";
 function series(ci, k) {
   var c = CH[ci];
   if (c.id === "del") return (D.del && D.del[k]) || [];
@@ -1396,8 +1395,7 @@ function specs(ci) {
 }
 function span() {
   var a = Infinity, b = -Infinity;
-  CH.forEach(function (c, ci) { specs(ci).forEach(function (ln) { series(ci, ln[0]).forEach(function (p) { a = Math.min(a, p.t); b = Math.max(b, p.t); }); }); });
-  (D.orig || []).forEach(function (p) { a = Math.min(a, p.t); b = Math.max(b, p.t); });
+  ORDER.forEach(function (ci) { specs(ci).forEach(function (ln) { series(ci, ln[0]).forEach(function (p) { a = Math.min(a, p.t); b = Math.max(b, p.t); }); }); });
   return { a: a - 1, b: b + 1 };
 }
 var MIN_SPAN = 12;
@@ -1524,7 +1522,7 @@ function drawAll() {
   if (!D) return;
   if (!HV) HV = span();
   HV = clampView(HV);
-  CH.forEach(function (c, i) { if (c.kind === "orig") drawOrig(i); else drawLines(i); });
+  ORDER.forEach(function (i) { if (CH[i].kind === "orig") drawOrig(i); else drawLines(i); });
   el("win").textContent = (cur == null ? "" : "Reading " + qName(cur) + " · ") + "Household Debt and Credit through " + (D.hhAsOf || "n/a") + " · Credit Access survey through " + (D.sceAsOf || "n/a") + (D.fhaAsOf ? " · FHA through " + D.fhaAsOf : "");
 }
 // ---- Release schedule: sources by next update, the first few shown, tap for all
@@ -1632,7 +1630,7 @@ function bindZoom(t) {
   }
 }
 // ---- HUD's FHA report beyond Table 1: who's falling behind, why, and failure rates by vintage
-var HP = { panel: "score", t2cur: null, figCur: null, figOff: {} };
+var HP = { panel: "score", t2cur: null, figCur: null, figOff: {}, rOff: {} };
 var PANELS = [["score", "Credit score"], ["purpose", "Purpose"], ["refi", "Refi type"], ["firstTime", "First-time"], ["dpa", "Down payment"], ["cohort", "Vintage"], ["amount", "Loan size"], ["property", "Property"]];
 var REASONS = [["Reduction of income", "#FF9F0A"], ["Unemployed", "#FF453A"], ["Excessive obligations", "#BF5AF2"], ["Death or illness", "#64D2FF"], ["Marital difficulties", "#FFD60A"], ["No contact", "#8E8E93"], ["National emergency", "#30D5C8"], ["Other", "#636366"]];
 var FIGCOL = ["#3A5A8C", "#46679B", "#5375AA", "#6083B9", "#6E92C7", "#7CA1D4", "#8BB0E0", "#30D5C8", "#30D158", "#FFD60A", "#FF9F0A", "#FF453A", "#FF375F", "#BF5AF2"];
@@ -1719,16 +1717,16 @@ function drawWhy(H) {
   [0, 25, 50, 75, 100].forEach(function (v) { var y = B2 - v / 100 * (B2 - 6); s2 += '<line x1="' + L + '" x2="' + R + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#3A3A3C" stroke-width="0.6"/><text x="' + (L - 4) + '" y="' + (y + 3.5).toFixed(1) + '" font-size="10" fill="#8E8E93" text-anchor="end">' + v + "%</text>"; });
   rows.forEach(function (r, k) {
     var x = L + k * bw2, acc = 0, tot = r.sh.reduce(function (a, b) { return a + b; }, 0) || 100;
-    r.sh.forEach(function (v, j) { var a = acc / tot * 100, b = (acc + v) / tot * 100; s2 += '<rect x="' + (x + bw2 * 0.1).toFixed(1) + '" y="' + (B2 - b / 100 * (B2 - 6)).toFixed(1) + '" width="' + (bw2 * 0.8).toFixed(1) + '" height="' + ((b - a) / 100 * (B2 - 6)).toFixed(1) + '" fill="' + REASONS[j][1] + '" fill-opacity="' + (sel === r ? 1 : 0.7) + '"/>'; acc += v; });
+    r.sh.forEach(function (v, j) { if (HP.rOff[j]) return; var a = acc / tot * 100, b = (acc + v) / tot * 100; s2 += '<rect x="' + (x + bw2 * 0.1).toFixed(1) + '" y="' + (B2 - b / 100 * (B2 - 6)).toFixed(1) + '" width="' + (bw2 * 0.8).toFixed(1) + '" height="' + ((b - a) / 100 * (B2 - 6)).toFixed(1) + '" fill="' + REASONS[j][1] + '" fill-opacity="' + (sel === r ? 1 : 0.7) + '"/>'; acc += v; });
     if (r.mon == null && r.q === 1) s2 += '<text x="' + (x + bw2 / 2).toFixed(1) + '" y="' + (h2 - 4) + '" font-size="9.5" fill="#8E8E93" text-anchor="middle">FY' + String(r.fy).slice(2) + "</text>";
     if (r.mon != null && (k === rows.length - 1 || rows[k + 1].mon == null)) s2 += '<text x="' + (x + bw2 / 2).toFixed(1) + '" y="' + (h2 - 4) + '" font-size="9.5" fill="#8E8E93" text-anchor="middle">' + MON[r.mon] + "</text>";
   });
   if (sel) { var xs = L + rows.indexOf(sel) * bw2; s2 += '<rect x="' + (xs + bw2 * 0.05).toFixed(1) + '" y="5" width="' + (bw2 * 0.9).toFixed(1) + '" height="' + (B2 - 5) + '" fill="none" stroke="#FFFFFF" stroke-width="1.2"/>'; }
   sS.setAttribute("viewBox", "0 0 " + w + " " + h2); sS.innerHTML = s2; sS.__g = { L: L, bw: bw2, rows: rows };
-  el("hwg").innerHTML = REASONS.map(function (rr, j) { return '<span class="chip" style="color:' + rr[1] + '">&#9679; ' + esc(rr[0]) + " " + sel.sh[j].toFixed(1) + "%</span>"; }).join("");
+  el("hwg").innerHTML = REASONS.map(function (rr, j) { return '<span class="chip hreason' + (HP.rOff[j] ? " off" : "") + '" data-r="' + j + '" style="color:' + rr[1] + '">&#9679; ' + esc(rr[0]) + " " + sel.sh[j].toFixed(1) + "%</span>"; }).join("");
   el("hwv").innerHTML = sel.n.toLocaleString("en-US") + ' new<br><span style="color:#8E8E93;font-size:11px;font-weight:600">' + esc(t2Name(sel)) + (sel.mon != null ? " (one month)" : "") + "</span>";
   el("hwl").textContent = whyLine(rows) || "";
-  el("hwd").textContent = "Loans newly 90+ days late each fiscal quarter (the fiscal year starts in October), and the reason servicers reported, from HUD's " + (H.t2At || "") + " report (Table 2). The current quarter shows month by month. National emergency includes the COVID-19 pandemic; Other includes property problems, job transfers, business failure, payment disputes and more. Tap a bar to read it.";
+  el("hwd").textContent = "Loans newly 90+ days late each fiscal quarter (the fiscal year starts in October), and the reason servicers reported, from HUD's " + (H.t2At || "") + " report (Table 2). The current quarter shows month by month. National emergency includes the COVID-19 pandemic; Other includes property problems, job transfers, business failure, payment disputes and more. Tap a bar to read it; tap a reason to hide or show it (the bars keep their 0-100% scale, so each reason's share stays true).";
 }
 // the top reason now, and the biggest move in a year (latest full quarter vs four quarters earlier)
 function whyLine(rows) {
@@ -1789,8 +1787,9 @@ function drawFig(H) {
   el("hfd").textContent = "Loans that went to claim or are in foreclosure, as a share of each fiscal year's FHA loans, by months since origination (HUD's " + (H.figAt || "") + " report, Figure 1, read from the chart's lines; good to about 0.01 points). Tap a year to hide it; tap the chart to read a month.";
 }
 document.addEventListener("click", function (e) {
-  var t = e.target && e.target.closest ? e.target.closest(".hpick, .hfy") : null;
+  var t = e.target && e.target.closest ? e.target.closest(".hpick, .hfy, .hreason") : null;
   if (!t) return;
+  if (t.getAttribute("data-r")) { var rj = t.getAttribute("data-r"); HP.rOff[rj] = !HP.rOff[rj]; }
   if (t.getAttribute("data-p")) HP.panel = t.getAttribute("data-p");
   if (t.getAttribute("data-fy")) { var fy = t.getAttribute("data-fy"); HP.figOff[fy] = !HP.figOff[fy]; }
   safe(renderHud);
@@ -1817,13 +1816,13 @@ safe(build);
 if (D) safe(renderAll); else el("errs").textContent = "Loading the NY Fed data (the first time takes a minute)...";
 // Share as PDF: 16:9 slides, the dates zoomed to on screen, hidden lines
 // skipped. 1) Delinquency: new 90+ by loan type | where late mortgages go.
-// 2) FHA delinquency, then who's falling behind, why, and failing by vintage. 3) Originations by credit score | score of new
+// 2) FHA delinquency, then who's falling behind, why, and failing by vintage. (Originations by credit score | score of new
 // mortgages. 4) Rejections.
 // Plain titles; captions explain; labels at the right edge; a dark banner
 // credits the sources. Vector.
 window.printPdf = function (jsPDF, fonts) {
   if (!D) throw new Error("The data hasn't loaded yet");
-  var W = 792, H = 445.5, hasRej = specs(4).length > 0, hasFha = specs(5).length > 0, PAGES = 2 + (hasRej ? 1 : 0) + (hasFha ? 1 : 0) + (D.hud && D.hud.t3 && D.hud.t3.score ? 1 : 0) + (D.hud && D.hud.t2 && D.hud.t2.length ? 1 : 0) + (D.hud && D.hud.fig && D.hud.fig.length ? 1 : 0), PG = 0;
+  var W = 792, H = 445.5, hasRej = specs(4).length > 0, hasFha = specs(5).length > 0, PAGES = 1 + (hasRej ? 1 : 0) + (hasFha ? 1 : 0) + (D.hud && D.hud.t3 && D.hud.t3.score ? 1 : 0) + (D.hud && D.hud.t2 && D.hud.t2.length ? 1 : 0) + (D.hud && D.hud.fig && D.hud.fig.length ? 1 : 0), PG = 0;
   var doc = new jsPDF({ unit: "pt", format: [W, H], orientation: "landscape" });
   var FACE = "helvetica";
   if (fonts && fonts.regular && fonts.bold) {
@@ -1984,12 +1983,12 @@ window.printPdf = function (jsPDF, fonts) {
     [0, 25, 50, 75, 100].forEach(function (v) { var yy = Bq - v / 100 * (Bq - Tq); doc.setDrawColor(RULE[0], RULE[1], RULE[2]); doc.setLineWidth(0.5); doc.line(Ls, yy, Rs, yy); font(false, 8, GRY); doc.text(v + "%", Ls - 5, yy + 3, { align: "right" }); });
     all.forEach(function (r, k) {
       var x = Ls + k * bs, acc = 0, tot = r.sh.reduce(function (a, b) { return a + b; }, 0) || 100;
-      r.sh.forEach(function (v, j) { var c = pc(REASONS[j][1]), a = acc / tot * 100, b2 = (acc + v) / tot * 100; doc.setFillColor(c[0], c[1], c[2]); doc.rect(x + bs * 0.1, Bq - b2 / 100 * (Bq - Tq), bs * 0.8, (b2 - a) / 100 * (Bq - Tq), "F"); acc += v; });
+      r.sh.forEach(function (v, j) { if (HP.rOff[j]) return; var c = pc(REASONS[j][1]), a = acc / tot * 100, b2 = (acc + v) / tot * 100; doc.setFillColor(c[0], c[1], c[2]); doc.rect(x + bs * 0.1, Bq - b2 / 100 * (Bq - Tq), bs * 0.8, (b2 - a) / 100 * (Bq - Tq), "F"); acc += v; });
       if (r.mon == null && r.q === 1) { font(false, 8, GRY); doc.text("FY" + String(r.fy).slice(2), x + bs / 2, Bq + 11, { align: "center" }); }
       if (r.mon != null && (k === all.length - 1 || all[k + 1].mon == null)) { font(false, 8, GRY); doc.text(MON[r.mon], x + bs / 2, Bq + 11, { align: "center" }); }
     });
     var lx = L1, ly = Bq + 26, last = all[all.length - 1];
-    REASONS.forEach(function (rr, j) { var c = pc(rr[1]), t = rr[0] + " " + last.sh[j].toFixed(1) + "%"; font(false, 8, INK); var tw = doc.getTextWidth(t) + 22; if (lx + tw > W - 36) { lx = L1; ly += 11; } doc.setFillColor(c[0], c[1], c[2]); doc.rect(lx, ly - 6.5, 7, 7, "F"); doc.text(t, lx + 10, ly); lx += tw; });
+    REASONS.forEach(function (rr, j) { if (HP.rOff[j]) return; var c = pc(rr[1]), t = rr[0] + " " + last.sh[j].toFixed(1) + "%"; font(false, 8, INK); var tw = doc.getTextWidth(t) + 22; if (lx + tw > W - 36) { lx = L1; ly += 11; } doc.setFillColor(c[0], c[1], c[2]); doc.rect(lx, ly - 6.5, 7, 7, "F"); doc.text(t, lx + 10, ly); lx += tw; });
     banner(++PG, "HUD " + (HU.t2At || ""));
   }
   if (HU.fig && HU.fig.length) {
@@ -2012,29 +2011,6 @@ window.printPdf = function (jsPDF, fonts) {
     banner(++PG, "HUD " + (HU.figAt || ""));
   }
 
-  // ---- 2. Originations by credit score ----
-  doc.addPage([W, H], "landscape");
-  headline("Mortgage Originations by Credit Score");
-  var O = (D.orig || []).filter(function (p) { return p.t >= HV.a - 1 && p.t <= HV.b + 1; }), share = origMode === "share";
-  titles(L1, half, share ? "Share of New Mortgage Dollars by Credit Score" : "New Mortgage Dollars by Credit Score", share ? "% of each quarter's originations" : "Billions of $ per quarter", T0 - 48);
-  if (O.length) {
-    var tot = function (p) { return p.b.reduce(function (a, x) { return a + x; }, 0); };
-    var hiO = share ? 100 : Math.ceil(Math.max.apply(null, O.map(tot)) * 1.08 / nice(Math.max.apply(null, O.map(tot)), 4)) * nice(Math.max.apply(null, O.map(tot)), 4);
-    var FO = box(L1 + 30, L1 + half - 52, T0, B0, 0, hiO, share ? "pct0" : "int", false);
-    var PB = BCOL.map(pc), bw = Math.max(0.8, (FO.X(3) - FO.X(0)) * 0.8);
-    clipTo(FO);
-    O.forEach(function (p) { var acc = 0, T1 = tot(p); p.b.forEach(function (v, k) { var x = share ? v / T1 * 100 : v; doc.setFillColor(PB[k][0], PB[k][1], PB[k][2]); doc.rect(FO.X(p.t) - bw / 2, FO.Y(acc + x), bw, FO.Y(acc) - FO.Y(acc + x), "F"); acc += x; }); });
-    doc.restoreGraphicsState();
-    if (D.brk && D.brk > HV.a && D.brk < HV.b) { doc.setDrawColor(28, 28, 30); doc.setLineWidth(0.7); doc.setLineDashPattern([2, 2], 0); doc.line(FO.X(D.brk - 1.5), FO.T, FO.X(D.brk - 1.5), FO.B); doc.setLineDashPattern([], 0); font(false, 7.5, INK); doc.text("score model change", FO.X(D.brk - 1.5), FO.T - 4, { align: "center" }); }
-    var r = cur == null ? O[O.length - 1] : valAt(O, cur, 3);
-    if (r) { var T2 = tot(r), acc2 = 0, labs = []; r.b.forEach(function (v, k) { var x = share ? v / T2 * 100 : v; labs.push({ y: FO.Y(acc2 + x / 2), t: share ? Math.round(x) + "%" : "$" + Math.round(v) + "B", c: PB[k] }); acc2 += x; }); ends(FO, labs); }
-    var lx = L1 + 30; BANDS.forEach(function (b, k) { doc.setFillColor(PB[k][0], PB[k][1], PB[k][2]); doc.rect(lx, B0 + 20, 8, 8, "F"); font(false, 8.5, INK); doc.text(b, lx + 11, B0 + 27); lx += 18 + doc.getTextWidth(b) + 8; });
-  }
-  caption(CH[2].ds + (D.brk ? " The score model changed to VantageScore 4.0 in " + qName(D.brk) + " (dashed line)." : ""), L1, half, H - 44 - 40);
-  lineChart(3, L2, L2 + half, T0, B0, "Credit Score of New Mortgages", "Median, 25th and 10th percentile");
-  caption(CH[3].ds, L2, half, H - 44 - 40);
-  banner(++PG);
-
   // ---- 3. Rejections ----
   if (hasRej) {
     doc.addPage([W, H], "landscape");
@@ -2046,15 +2022,15 @@ window.printPdf = function (jsPDF, fonts) {
   return doc;
 };
 
-window.shareInfo = function () { return { title: "Borrower Credit", name: "Delinquency, credit scores and rejections", asOf: D ? D.hhAsOf || "" : "" }; };
+window.shareInfo = function () { return { title: "Borrower Credit", name: "Delinquency and rejections", asOf: D ? D.hhAsOf || "" : "" }; };
 </script>
 </body>
 </html>`;
 
 
 // ---------- Run ----------
-const SOURCES = "Sources: Federal Reserve Bank of New York, Quarterly Report on Household Debt and Credit (NY Fed Consumer Credit Panel/Equifax): new seriously delinquent balances, 30-60-day late mortgage transitions, originations by credit score; NY Fed SCE Credit Access Survey (rejections, discouraged borrowers); U.S. Department of HUD/FHA, Single Family Loan Performance Trends: Tables 1-3 (delinquency, reasons, loan characteristics) and Figure 1 (failure rates, read from the chart). Gray columns: NBER recessions.";
-const NOTE = "Delinquency: the share of each loan type's balances that became 90+ days late over the past four quarters, as the NY Fed reports it. Late mortgages: of balances 30-60 days late, the share current or 90+ days late a quarter later. Originations: new mortgage dollars by the borrower's credit score at origination (Equifax Riskscore until the NY Fed moved to VantageScore 4.0 in 2026, so the bands aren't exactly comparable across that change). Rejections: from the NY Fed's Credit Access Survey, fielded every four months to about 1,000 households, so single readings are noisy; the rejection rate is among people who applied, and discouraged borrowers are people who wanted credit but didn't apply because they expected to be turned down. FHA: share of active FHA single-family loans by count, seasonally adjusted, from HUD's monthly report; serious delinquency is 90+ days late plus in foreclosure plus in bankruptcy. Who's falling behind: serious delinquency for each group of active FHA loans in HUD's newest report (Table 3), with the same group a year earlier; shares are each group's share of loans in its panel (streamline refinances have no credit score, so they're left out of the score panel). Why: HUD's reasons for new 90+ day delinquencies by fiscal quarter (October starts the fiscal year), with the current quarter's months so far; National emergency includes the COVID-19 pandemic. Failing by vintage: loans gone to claim or in foreclosure as a share of each fiscal year's loans, by months since origination, read from the lines of HUD's Figure 1, so values are good to about 0.01 points. The NY Fed and HUD revise recent periods.";
+const SOURCES = "Sources: Federal Reserve Bank of New York, Quarterly Report on Household Debt and Credit (NY Fed Consumer Credit Panel/Equifax): new seriously delinquent balances, 30-60-day late mortgage transitions; NY Fed SCE Credit Access Survey (rejections, discouraged borrowers); U.S. Department of HUD/FHA, Single Family Loan Performance Trends: Tables 1-3 (delinquency, reasons, loan characteristics) and Figure 1 (failure rates, read from the chart). Gray columns: NBER recessions.";
+const NOTE = "Delinquency: the share of each loan type's balances that became 90+ days late over the past four quarters, as the NY Fed reports it. Late mortgages: of balances 30-60 days late, the share current or 90+ days late a quarter later. Rejections: from the NY Fed's Credit Access Survey, fielded every four months to about 1,000 households, so single readings are noisy; the rejection rate is among people who applied, and discouraged borrowers are people who wanted credit but didn't apply because they expected to be turned down. FHA: share of active FHA single-family loans by count, seasonally adjusted, from HUD's monthly report; serious delinquency is 90+ days late plus in foreclosure plus in bankruptcy. Who's falling behind: serious delinquency for each group of active FHA loans in HUD's newest report (Table 3), with the same group a year earlier; shares are each group's share of loans in its panel (streamline refinances have no credit score, so they're left out of the score panel). Why: HUD's reasons for new 90+ day delinquencies by fiscal quarter (October starts the fiscal year), with the current quarter's months so far; National emergency includes the COVID-19 pandemic. Failing by vintage: loans gone to claim or in foreclosure as a share of each fiscal year's loans, by months since origination, read from the lines of HUD's Figure 1, so values are good to about 0.01 points. The NY Fed and HUD revise recent periods.";
 function payload(s) {
   if (!s) return null;
   const hh = s.hh || {}, sce = s.sce || {}, waves = sce.waves || [];

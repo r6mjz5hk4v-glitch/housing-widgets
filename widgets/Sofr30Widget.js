@@ -1624,6 +1624,7 @@ function scheduleWindow(a, b) {
   });
 }
 
+var tapDown = null; // the second tap of a possible double-tap, until its finger lifts
 function onDown(e) {
   fingers[e.pointerId] = { x: e.clientX, y: e.clientY };
   var n = fingerIds().length;
@@ -1631,15 +1632,15 @@ function onDown(e) {
     var st = pinchNow(), span = win.b - win.a;
     // Remember which data point sits between the fingers; it stays there.
     pinch = { dist: st.dist, span: span, anchor: win.a + fracAt(st.mid) * span };
-    pinchLock = true;
+    pinchLock = true; tapDown = null;
     var c = el("cur");
     if (c) c.setAttribute("visibility", "hidden");
     header(null);
   } else if (n === 1 && !pinchLock) {
     var now = Date.now();
     if (D.zoom && lastTap && now - lastTap.t < 320 && Math.abs(e.clientX - lastTap.x) < 30) {
-      lastTap = null;
-      select(curRange); // double-tap: back to the last range button
+      // the second tap of a double-tap: acted on when the finger lifts, so a pinch that starts right after a tap doesn't reset the view
+      tapDown = { t: now, x: e.clientX };
       return;
     }
     lastTap = { t: now, x: e.clientX };
@@ -1666,7 +1667,7 @@ function onUp(e) {
   delete fingers[e.pointerId];
   var n = fingerIds().length;
   if (n < 2) pinch = null;
-  if (n === 0) {
+  if (n === 0) { if (tapDown && !pinchLock && e.type !== "pointercancel" && Date.now() - tapDown.t < 450 && Math.abs(e.clientX - tapDown.x) < 30) { lastTap = null; select(curRange); } tapDown = null;
     if (!pinchLock) endScrub();
     pinchLock = false;
   }

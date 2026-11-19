@@ -1,6 +1,10 @@
 {
  "MortgageSpreadWidget.js": [
   {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -18,6 +22,10 @@
   }
  ],
  "MarketRateWidget.js": [
+  {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
   {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -37,6 +45,10 @@
  ],
  "ArmIndicatorWidget.js": [
   {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -55,6 +67,10 @@
  ],
  "Sofr30Widget.js": [
   {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -72,6 +88,10 @@
   }
  ],
  "LockInWidget.js": [
+  {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
   {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -126,6 +146,10 @@
   }
  ],
  "BuilderStocksWidget.js": [
+  {
+   "d": "2026-11-19",
+   "t": "If no prices can be loaded at all, it now says so (with why) instead of sitting on \"Loading prices\". Lifting the last finger after pinching the heatmap no longer counts as a tap."
+  },
   {
    "d": "2026-11-18",
    "t": "Steadier Listen recordings: shorter pieces joined smoothly and steadier voice settings, to stop the voice drifting into a whisper. Page headers and page numbers are no longer read aloud. Calls you already recorded still play free."
@@ -187,6 +211,10 @@
  ],
  "RedfinBuyersSellersWidget.js": [
   {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -205,6 +233,10 @@
  ],
  "AffordabilityGapWidget.js": [
   {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -222,6 +254,10 @@
   }
  ],
  "PaymentChangeWidget.js": [
+  {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
   {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -277,6 +313,10 @@
  ],
  "BorrowerCreditWidget.js": [
   {
+   "d": "2026-11-19",
+   "t": "Tap a reason under FHA \"Share by reason\" to hide or show it (the PDF follows). The \"Who's getting mortgages\" and credit score charts, and their PDF slide, are gone."
+  },
+  {
    "d": "2026-11-18",
    "t": "Three new FHA sections from HUD's monthly report: who's falling behind (serious delinquency by credit score, down payment help, first-time buyers, vintage and more, vs a year ago), why borrowers fall behind, and failure rates by loan vintage. Each gets its own slide in Share as PDF. The first open after updating reads HUD's newest report again, so give it an extra minute."
   },
@@ -299,6 +339,10 @@
  ],
  "SavingRateWidget.js": [
   {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -317,6 +361,10 @@
  ],
  "SentimentWidget.js": [
   {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -334,6 +382,10 @@
   }
  ],
  "UnemploymentWidget.js": [
+  {
+   "d": "2026-11-19",
+   "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+  },
   {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."

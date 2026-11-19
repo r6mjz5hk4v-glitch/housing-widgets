@@ -830,7 +830,16 @@ function render() {
   el("secBtn").textContent = D.sec ? "SEC contact" : "Set SEC contact (for market caps)";
   el("voiceBtn").textContent = "Voice: " + (D.voice || "iPhone voice");
   // first open on a phone: nothing saved yet, so wait for the first prices
-  if (!D.series || !D.series.dates || D.series.dates.length < 2) { el("lede").textContent = "Loading prices… (the first time takes a minute)"; return; }
+  if (!D.series || !D.series.dates || D.series.dates.length < 2) {
+    // done looking (checked is set) and still no prices: say so, with why, instead of waiting forever
+    var fl = (D.base && D.base.failed) || [];
+    if (D.checked && fl.length) {
+      el("lede").textContent = "Couldn't get prices for any builder. Check the connection and open it again.";
+      var why = {}; fl.forEach(function (f) { if (f.why) why[f.why] = (why[f.why] || 0) + 1; });
+      el("errs").textContent = Object.keys(why).slice(0, 3).map(function (w) { return w + (why[w] > 1 ? " (" + why[w] + " builders)" : ""); }).join("; ");
+    } else el("lede").textContent = "Loading prices… (the first time takes a minute)";
+    return;
+  }
   var M = cur();
   el("lede").textContent = "Top " + M.top.length + " of " + M.ranked.length + " US public homebuilders by market cap" + (D.haveCaps === false ? "" : "");
   if (!M.haveCaps) el("errs").textContent = "No market caps yet (share counts come from SEC filings): showing builders in list order.";
@@ -847,7 +856,8 @@ function maxW() { return Math.min(D.maxDays || 252, D.series.dates.length - 1); 
   var d0 = 0, W0 = 30, raf = 0, lastTap = 0;
   function dist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
   var hm = el("hm");
-  hm.addEventListener("touchstart", function (e) { if (e.touches.length === 2) { d0 = dist(e.touches); W0 = W; e.preventDefault(); } }, { passive: false });
+  var pinched = false;
+  hm.addEventListener("touchstart", function (e) { if (e.touches.length === 2) { d0 = dist(e.touches); W0 = W; pinched = true; lastTap = 0; e.preventDefault(); } }, { passive: false });
   hm.addEventListener("touchmove", function (e) {
     if (e.touches.length !== 2 || !d0) return;
     e.preventDefault();
@@ -858,6 +868,7 @@ function maxW() { return Math.min(D.maxDays || 252, D.series.dates.length - 1); 
   }, { passive: false });
   hm.addEventListener("touchend", function (e) {
     if (e.touches.length < 2) d0 = 0;
+    if (e.touches.length === 0 && pinched) { pinched = false; lastTap = 0; return; } // lifting the last finger of a pinch isn't a tap
     if (e.changedTouches.length === 1 && e.touches.length === 0) {
       var now = Date.now();
       if (now - lastTap < 300) { W = D.start; pick = null; render(); lastTap = 0; e.preventDefault(); return; }

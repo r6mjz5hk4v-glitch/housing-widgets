@@ -1,5 +1,5 @@
 {
- "updated": "Nov 18, 2026",
+ "updated": "Nov 19, 2026",
  "files": [
   {
    "name": "Setup",
@@ -48,8 +48,12 @@
     "fred"
    ],
    "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "be980ce5",
+   "hash": "b594d000",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -57,10 +61,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -73,8 +73,12 @@
     "fred"
    ],
    "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate",
-   "hash": "a6076ebd",
+   "hash": "b7fc8dbc",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -82,10 +86,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -98,8 +98,12 @@
     "fred"
    ],
    "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "46e6d686",
+   "hash": "b82e2bf5",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -107,10 +111,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -123,8 +123,12 @@
     "fred"
    ],
    "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "cdfd9998",
+   "hash": "85a1cd75",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -132,10 +136,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -148,8 +148,12 @@
     "fred"
    ],
    "sig": "// Rate Lock-In for Scriptable",
-   "hash": "7e9a5e96",
+   "hash": "32a9af64",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -157,10 +161,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -223,8 +223,12 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "643e34e8",
+   "hash": "9df0b97",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "If no prices can be loaded at all, it now says so (with why) instead of sitting on \"Loading prices\". Lifting the last finger after pinching the heatmap no longer counts as a tap."
+    },
     {
      "d": "2026-11-18",
      "t": "Steadier Listen recordings: shorter pieces joined smoothly and steadier voice settings, to stop the voice drifting into a whisper. Page headers and page numbers are no longer read aloud. Calls you already recorded still play free."
@@ -232,10 +236,6 @@
     {
      "d": "2026-11-18",
      "t": "Past calls you've already recorded with ElevenLabs show a green \"Recorded\" tag (or \"Partly recorded\"), so you can see where credits went. Those play free."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "New under the Voice button: Saver quality, which records with ElevenLabs' Flash model in the same voice for about half the credits. Standard stays the default."
     }
    ]
   },
@@ -271,8 +271,12 @@
    "about": "Redfin's count of active buyers vs sellers",
    "needs": [],
    "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable",
-   "hash": "beb6d3ec",
+   "hash": "f2afef82",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -280,10 +284,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -296,8 +296,12 @@
     "metro"
    ],
    "sig": "// Housing Affordability Gap for Scriptable",
-   "hash": "bc40c150",
+   "hash": "81bbb0ee",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -305,10 +309,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -322,8 +322,12 @@
     "metro"
    ],
    "sig": "// Payment vs N Years Ago for Scriptable",
-   "hash": "b10eb43c",
+   "hash": "3322eaf0",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -331,10 +335,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -395,8 +395,12 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "9a59c097",
+   "hash": "bd57347",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Tap a reason under FHA \"Share by reason\" to hide or show it (the PDF follows). The \"Who's getting mortgages\" and credit score charts, and their PDF slide, are gone."
+    },
     {
      "d": "2026-11-18",
      "t": "Three new FHA sections from HUD's monthly report: who's falling behind (serious delinquency by credit score, down payment help, first-time buyers, vintage and more, vs a year ago), why borrowers fall behind, and failure rates by loan vintage. Each gets its own slide in Share as PDF. The first open after updating reads HUD's newest report again, so give it an extra minute."
@@ -404,10 +408,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -420,8 +420,12 @@
     "fred"
    ],
    "sig": "// Personal Saving Rate Widget for Scriptable (small widget)",
-   "hash": "d61accb0",
+   "hash": "b2348342",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -429,10 +433,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -445,8 +445,12 @@
     "fred"
    ],
    "sig": "// Consumer Sentiment Widget for Scriptable (small widget)",
-   "hash": "bfbdc76",
+   "hash": "82534768",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -454,10 +458,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -470,8 +470,12 @@
     "fred"
    ],
    "sig": "// Unemployment Rate Widget for Scriptable (small widget)",
-   "hash": "340253",
+   "hash": "4805caef",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -479,10 +483,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },

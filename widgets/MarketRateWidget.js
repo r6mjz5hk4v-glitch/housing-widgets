@@ -2504,6 +2504,7 @@ function scheduleWindow(a, b) {
   });
 }
 
+var tapDown = null; // the second tap of a possible double-tap, until its finger lifts
 function onDown(e) {
   fingers[e.pointerId] = { x: e.clientX, y: e.clientY };
   var n = fingerIds().length;
@@ -2511,7 +2512,7 @@ function onDown(e) {
     var st = pinchNow(), span = win.b - win.a;
     // Remember which data point sits between the fingers; it stays there.
     pinch = { dist: st.dist, span: span, anchor: win.a + fracAt(st.mid) * span };
-    pinchLock = true;
+    pinchLock = true; tapDown = null;
     var c = el("cur");
     if (c) c.setAttribute("visibility", "hidden");
     spreadCursor(null);
@@ -2519,8 +2520,8 @@ function onDown(e) {
   } else if (n === 1 && !pinchLock) {
     var now = Date.now();
     if (D.zoom && lastTap && now - lastTap.t < 320 && Math.abs(e.clientX - lastTap.x) < 30) {
-      lastTap = null;
-      select(curRange); // double-tap: back to the last range button
+      // the second tap of a double-tap: acted on when the finger lifts, so a pinch that starts right after a tap doesn't reset the view
+      tapDown = { t: now, x: e.clientX };
       return;
     }
     lastTap = { t: now, x: e.clientX };
@@ -2547,7 +2548,7 @@ function onUp(e) {
   delete fingers[e.pointerId];
   var n = fingerIds().length;
   if (n < 2) pinch = null;
-  if (n === 0) {
+  if (n === 0) { if (tapDown && !pinchLock && e.type !== "pointercancel" && Date.now() - tapDown.t < 450 && Math.abs(e.clientX - tapDown.x) < 30) { lastTap = null; select(curRange); } tapDown = null;
     if (!pinchLock) endScrub();
     pinchLock = false;
   }
@@ -2682,10 +2683,11 @@ function fcZoomable(ovId, svId, model, setV, redraw) {
     f[e.pointerId] = { x: e.clientX, y: e.clientY };
     var n = Object.keys(f).length, M = model();
     if (!M) return;
-    if (n === 2) { var st = two(); pz = { d: st.d, span: M.t1 - M.t0, at: M.t0 + frac(st.mid) * (M.t1 - M.t0) }; tap = null; }
+    if (n === 2) { var st = two(); pz = { d: st.d, span: M.t1 - M.t0, at: M.t0 + frac(st.mid) * (M.t1 - M.t0) }; tap = null; tapDown = null; pinched = true; }
     else if (n === 1) {
       var now = Date.now();
-      if (tap && now - tap.t < 320 && Math.abs(e.clientX - tap.x) < 30) { tap = null; setV(null); redraw(); }
+      // the second tap of a double-tap: acted on when the finger lifts, so a pinch that starts right after a tap doesn't reset the zoom
+      if (tap && now - tap.t < 320 && Math.abs(e.clientX - tap.x) < 30) tapDown = { t: now, x: e.clientX };
       else tap = { t: now, x: e.clientX };
     }
   });
@@ -2699,7 +2701,17 @@ function fcZoomable(ovId, svId, model, setV, redraw) {
     setV({ a: a, b: a + span });
     if (!raf) raf = requestAnimationFrame(function () { raf = 0; redraw(); });
   });
-  function up(e) { delete f[e.pointerId]; if (Object.keys(f).length < 2) pz = null; }
+  var tapDown = null, pinched = false;
+  function up(e) {
+    if (!f[e.pointerId]) return;
+    delete f[e.pointerId];
+    var n = Object.keys(f).length;
+    if (n < 2) pz = null;
+    if (n === 0) {
+      if (tapDown && !pinched && e.type !== "pointercancel" && Date.now() - tapDown.t < 450 && Math.abs(e.clientX - tapDown.x) < 30) { tap = null; setV(null); redraw(); }
+      tapDown = null; pinched = false;
+    }
+  }
   ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { ov.addEventListener(ev, up); });
 }
 

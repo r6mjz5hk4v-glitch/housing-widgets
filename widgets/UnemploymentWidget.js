@@ -2097,14 +2097,19 @@ function posAt(x) {
 }
 function pinchNow() { var k = ids(), p = fingers[k[0]], q = fingers[k[1]], dx = p.x - q.x, dy = p.y - q.y; return { dist: Math.max(10, Math.sqrt(dx * dx + dy * dy)), mid: (p.x + q.x) / 2 }; }
 function schedule(a, b) { pending = [a, b]; if (rafId) return; rafId = requestAnimationFrame(function () { rafId = 0; var v = pending; pending = null; setView(v[0], v[1]); }); }
+var tapDown = null; // the second tap of a possible double-tap, until its finger lifts
 function onDown(id, e) {
   fingers[e.pointerId] = { x: e.clientX, y: e.clientY };
   var n = ids().length;
   if (n === 1) active = id;
-  if (n === 2) { var st = pinchNow(); pinch = { dist: st.dist, span: view.b - view.a, anchor: posAt(st.mid).n }; pinchLock = true; cursor = null; lastTap = null; }
+  if (n === 2) { var st = pinchNow(); pinch = { dist: st.dist, span: view.b - view.a, anchor: posAt(st.mid).n }; pinchLock = true; tapDown = null; cursor = null; lastTap = null; }
   else if (n === 1 && !pinchLock) {
     var now = Date.now();
-    if (lastTap && now - lastTap.t < 320 && Math.abs(e.clientX - lastTap.x) < 30) { lastTap = null; cursor = null; resetView(); renderCharts(); return; }
+    if (lastTap && now - lastTap.t < 320 && Math.abs(e.clientX - lastTap.x) < 30) {
+      // the second tap of a double-tap: acted on when the finger lifts, so a pinch that starts right after a tap doesn't reset the view
+      tapDown = { t: now, x: e.clientX };
+      return;
+    }
     lastTap = { t: now, x: e.clientX };
     cursor = Math.round(posAt(e.clientX).n); renderCharts();
   }
@@ -2122,7 +2127,7 @@ function onUp(id, e) {
   delete fingers[e.pointerId];
   var n = ids().length;
   if (n < 2) pinch = null;
-  if (n === 0) { if (!pinchLock) { cursor = null; renderCharts(); } pinchLock = false; }
+  if (n === 0) { if (tapDown && !pinchLock && e.type !== "pointercancel" && Date.now() - tapDown.t < 450 && Math.abs(e.clientX - tapDown.x) < 30) { lastTap = null; cursor = null; resetView(); renderCharts(); } tapDown = null; if (!pinchLock) { cursor = null; renderCharts(); } pinchLock = false; }
 }
 ["1", "2", "3", "4", "5", "6", "7", "8", "9"].forEach(function (k) {
   var t = el("t" + k), id = "c" + k;
@@ -2145,10 +2150,11 @@ var bRaf = 0;
 el("tBev").addEventListener("pointerdown", function (e) {
   bf[e.pointerId] = { x: e.clientX, y: e.clientY };
   var n = Object.keys(bf).length;
-  if (n === 2) { var st = bevTwo(), W0 = bevWin(), a = bevData(st.x, st.y); bp = { d: st.d, us: W0.u1 - W0.u0, os: W0.o1 - W0.o0, u: a.u, o: a.o }; bTap = null; }
+  if (n === 2) { var st = bevTwo(), W0 = bevWin(), a = bevData(st.x, st.y); bp = { d: st.d, us: W0.u1 - W0.u0, os: W0.o1 - W0.o0, u: a.u, o: a.o }; bTap = null; bTapDown = null; bPinched = true; }
   else if (n === 1) {
     var now = Date.now();
-    if (bTap && now - bTap.t < 320 && Math.abs(e.clientX - bTap.x) < 30 && Math.abs(e.clientY - bTap.y) < 30) { bTap = null; bz = null; drawBev(); return; }
+    // the second tap of a double-tap: acted on when the finger lifts, so a pinch that starts right after a tap doesn't reset the zoom
+    if (bTap && now - bTap.t < 320 && Math.abs(e.clientX - bTap.x) < 30 && Math.abs(e.clientY - bTap.y) < 30) { bTapDown = { t: now, x: e.clientX, y: e.clientY }; return; }
     bTap = { t: now, x: e.clientX, y: e.clientY };
   }
 });
@@ -2167,7 +2173,17 @@ el("tBev").addEventListener("pointermove", function (e) {
   }
   if (!bRaf) bRaf = requestAnimationFrame(function () { bRaf = 0; drawBev(); });
 });
-function bevUp(e) { delete bf[e.pointerId]; if (Object.keys(bf).length < 2) bp = null; }
+var bTapDown = null, bPinched = false;
+function bevUp(e) {
+  if (!bf[e.pointerId]) return;
+  delete bf[e.pointerId];
+  var n = Object.keys(bf).length;
+  if (n < 2) bp = null;
+  if (n === 0) {
+    if (bTapDown && !bPinched && e.type !== "pointercancel" && Date.now() - bTapDown.t < 450 && Math.abs(e.clientX - bTapDown.x) < 30) { bTap = null; bz = null; drawBev(); }
+    bTapDown = null; bPinched = false;
+  }
+}
 ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { el("tBev").addEventListener(ev, bevUp); });
 document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
 window.addEventListener("resize", function () { if (D) renderCharts(); });

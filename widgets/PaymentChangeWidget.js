@@ -1403,6 +1403,7 @@ function scheduleView(a, b) {
   rafId = requestAnimationFrame(function () { rafId = 0; var v = pendingView; pendingView = null; setView(v[0], v[1]); });
 }
 function scrub(i) { state.cursor = i; renderCharts(); }
+var tapDown = null; // the second tap of a possible double-tap, until its finger lifts
 function onDown(svgId, e) {
   fingers[e.pointerId] = { x: e.clientX, y: e.clientY };
   var n = fingerIds().length;
@@ -1410,13 +1411,15 @@ function onDown(svgId, e) {
   if (n === 2) {
     var st = pinchNow();
     pinch = { dist: st.dist, n: view.b - view.a, anchor: posAt(st.mid).pos };
-    pinchLock = true; touched = true;
+    pinchLock = true; tapDown = null; touched = true;
     lastTap = null; // a pinch's first finger isn't half of a double-tap
     state.cursor = null;
   } else if (n === 1 && !pinchLock) {
     var now = Date.now();
     if (lastTap && now - lastTap.t < 320 && Math.abs(e.clientX - lastTap.x) < 30) {
-      lastTap = null; touched = false; state.cursor = null; resetView(); renderCharts(); return;
+      // the second tap of a double-tap: acted on when the finger lifts, so a pinch that starts right after a tap doesn't reset the view
+      tapDown = { t: now, x: e.clientX };
+      return;
     }
     lastTap = { t: now, x: e.clientX };
     scrub(idxAt(e.clientX));
@@ -1438,7 +1441,7 @@ function onUp(svgId, e) {
   delete fingers[e.pointerId];
   var n = fingerIds().length;
   if (n < 2) pinch = null;
-  if (n === 0) { if (!pinchLock) scrub(null); pinchLock = false; }
+  if (n === 0) { if (tapDown && !pinchLock && e.type !== "pointercancel" && Date.now() - tapDown.t < 450 && Math.abs(e.clientX - tapDown.x) < 30) { lastTap = null; touched = false; state.cursor = null; resetView(); renderCharts(); } tapDown = null; if (!pinchLock) scrub(null); pinchLock = false; }
 }
 ["1", "2"].forEach(function (k) {
   var layer = el("t" + k), id = "c" + k;
