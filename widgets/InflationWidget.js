@@ -820,13 +820,17 @@ async function refresh(s, inApp, say, live) {
       s.cal = cal;
     })(),
   ]);
-  if (inApp && (!live || live())) {
-    await step("sce", "NY Fed survey", getSce);
-    await step("spf", "Philadelphia Fed forecasters", getSpf);
-    await step("gscpi", "NY Fed supply-chain index", getGscpi);
-    await step("zori", "Zillow rents", getZori);
-    await step("fannie", "Fannie Mae's forecast", getFannie);
-    await step("fedcal", "the Fed's calendar", getFedCal);
+  saveStore(s); // keep the quick sources even if the view is closed before the slow ones finish
+  if (inApp) {
+    // one at a time, and only while the view is open: once it's closed the script
+    // should end, or the next tap on the widget finds it still busy and Scriptable
+    // just shows its script list. Anything skipped is picked up on the next open.
+    const slow = [["sce", "NY Fed survey", getSce], ["spf", "Philadelphia Fed forecasters", getSpf], ["gscpi", "NY Fed supply-chain index", getGscpi],
+      ["zori", "Zillow rents", getZori], ["fannie", "Fannie Mae's forecast", getFannie], ["fedcal", "the Fed's calendar", getFedCal]];
+    for (const [key, label, fn] of slow) {
+      if (live && !live()) break;
+      await step(key, label, fn);
+    }
   }
   s.at = Date.now();
   saveStore(s);
@@ -2129,9 +2133,9 @@ async function presentWithSharing(wv, background) {
     open = false;
   });
   const sharing = sharePoller(wv, () => open);
-  try {
-    await background(() => open);
-  } catch (e) {}
+  const bg = (async () => { try { await background(() => open); } catch (e) {} })();
+  // closing the view ends the run within about 2 seconds, even mid-download
+  await Promise.race([bg, closed.then(() => sleep(2000))]);
   const later = await sharing;
   await closed;
   for (const req of later) {

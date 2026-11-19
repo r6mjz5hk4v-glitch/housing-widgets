@@ -495,8 +495,12 @@
     "fred"
    ],
    "sig": "// Inflation Expectations Widget for Scriptable (small widget)",
-   "hash": "eac6ed8f",
+   "hash": "6dbcc1b3",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Tapping the widget right after closing it now opens Inflation every time, instead of sometimes landing on Scriptable's script list. Closing the view stops the slow downloads; whatever didn't finish catches up on the next open."
+    },
     {
      "d": "2026-11-19",
      "t": "A Fed calendar at the top (next FOMC meetings, minutes, Board speeches, in Central time). Open \"What people expect\" to see each group, with chips to hide them, plus forecasts running past Today: economists, Fannie Mae, the market model and the Fed's projections."
