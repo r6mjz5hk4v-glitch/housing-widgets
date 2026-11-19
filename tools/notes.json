@@ -314,6 +314,10 @@
  "BorrowerCreditWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "Dropped the Applications rejected survey chart. In Share as PDF, Where late mortgages go now gets its own full-width second slide, with a headline that gives the latest caught-up and rolled-to-90+ shares."
+  },
+  {
+   "d": "2026-11-19",
    "t": "The FHA chart is now \"Mortgage serious delinquency by loan type\": FHA vs Fannie Mae vs Freddie Mac, without the 30- and 60-day lines. In Share as PDF it sits on page 1 next to Going seriously delinquent, and Where late mortgages go now shares a slide with Rejections."
   },
   {

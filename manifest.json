@@ -395,8 +395,12 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "eb784a5b",
+   "hash": "6e5ee849",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Dropped the Applications rejected survey chart. In Share as PDF, Where late mortgages go now gets its own full-width second slide, with a headline that gives the latest caught-up and rolled-to-90+ shares."
+    },
     {
      "d": "2026-11-19",
      "t": "The FHA chart is now \"Mortgage serious delinquency by loan type\": FHA vs Fannie Mae vs Freddie Mac, without the 30- and 60-day lines. In Share as PDF it sits on page 1 next to Going seriously delinquent, and Where late mortgages go now shares a slide with Rejections."
@@ -404,10 +408,6 @@
     {
      "d": "2026-11-19",
      "t": "Fixed the Fannie Mae and Freddie Mac lines on the FHA delinquency chart: each report now fills in 13 months, so both lines rebuild back to 2015 over about two opens. If either site blocks the download, you'll see it in orange instead of a missing line."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "FHA delinquency now compares against conventional loans: Fannie Mae's and Freddie Mac's serious delinquency, back to 2016 (fills in over a few opens). PDF: one Who slide with FICO, first-time vs repeat and DPA; the reasons slide says which reasons you hid."
     }
    ]
   },

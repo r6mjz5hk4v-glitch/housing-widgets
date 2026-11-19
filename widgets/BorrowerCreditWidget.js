@@ -12,16 +12,14 @@ function setting(key, fallback) {
 
 
 // Borrower Credit for Scriptable
-// How borrower credit is holding up, from two public New York Fed sources:
-// - Quarterly Report on Household Debt and Credit (NY Fed Consumer Credit
+// How borrower credit is holding up, from the New York Fed's
+// Quarterly Report on Household Debt and Credit (NY Fed Consumer Credit
 //   Panel / Equifax), a spreadsheet each quarter (hhd_c_report_YYYYqN.xlsx):
 //   new seriously delinquent balances by loan type (page 14) and where 30-60-day
 //   late mortgages go next quarter (page 16).
-// - SCE Credit Access Survey (Feb, Jun, Oct), frbny-sce-credit-access-data.xlsx:
-//   rejection rates for mortgage and refinance applications, and discouraged
-//   borrowers (didn't apply because they expected a no).
 // Plus HUD's monthly FHA Single Family Loan Performance Trends (PDF, read with
-// pdf.js): FHA delinquency, seasonally adjusted, back to 2015; who's falling
+// pdf.js): FHA serious delinquency, seasonally adjusted, back to 2015, against
+// Fannie Mae's and Freddie Mac's (their monthly reports); who's falling
 // behind (Table 3: by credit score, loan purpose, first-time buyer, down payment
 // assistance, vintage, loan size, property type), why (Table 2: new 90+ day
 // delinquencies by reason) and failure rates by fiscal-year cohort (Figure 1,
@@ -157,11 +155,9 @@ const PREVIEW_WIDGET_IN_APP = false;
 const FILE = "mortgage-credit-v1.json";
 const TITLE = "Borrower Credit";
 const CHECK_HOURS = 24;        // look for a newer quarter's report this often
-const SCE_CHECK_HOURS = 24 * 7; // the survey file is re-read weekly
 const WIDGET_SECONDS = 20;
 const HHDC_URL = (q) => `https://www.newyorkfed.org/medialibrary/interactives/householdcredit/data/xls/hhd_c_report_${q}.xlsx`;
 const HHDC_PAGES = ["https://www.newyorkfed.org/microeconomics/hhdc/background.html", "https://www.newyorkfed.org/microeconomics/databank.html"];
-const SCE_URL = "https://www.newyorkfed.org/medialibrary/interactives/sce/sce/downloads/data/frbny-sce-credit-access-data.xlsx";
 const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const GRAY = "#98989F";
 // NBER recessions in this window (stable history)
@@ -335,39 +331,6 @@ async function fetchHhdc(have, say) {
   return null;
 }
 
-// ---------- The SCE Credit Access Survey ----------
-// Sheet "overall": a header row starting "date", one row per wave (YYYYMM).
-// Columns are found by name; their exact names can change between releases.
-function parseSce(sh) {
-  const rows = sh.overall;
-  if (!rows) throw new Error("the survey file's layout changed");
-  let hi = -1;
-  for (let i = 0; i < Math.min(8, rows.length); i++) if (rows[i].A && rows[i].A.toLowerCase() === "date") { hi = i; break; }
-  if (hi < 0) throw new Error("the survey file's headings changed");
-  const H = rows[hi], names = Object.keys(H).map((c) => ({ c, n: H[c] }));
-  const find = (test) => { const f = names.find((x) => test(x.n.toLowerCase())); return f ? f.c : null; };
-  const col = {
-    mrej: find((n) => /reject/.test(n) && /mort/.test(n) && !/refi/.test(n)),
-    rrej: find((n) => /reject/.test(n) && /refi/.test(n)),
-    rej: find((n) => /^rejectedfromoneormore/.test(n)),
-    disc: find((n) => n === "discouraged"),
-  };
-  const out = [];
-  for (let i = hi + 1; i < rows.length; i++) {
-    const r = rows[i], d = String(r.A || "");
-    if (!/^\d{6}$/.test(d) || (r.B && r.B.toLowerCase() !== "all")) continue;
-    const p = { t: +d.slice(0, 4) * 12 + +d.slice(4, 6) - 1 };
-    Object.keys(col).forEach((k) => { if (col[k]) { const v = num(r[col[k]]); if (v !== null) p[k] = v; } });
-    out.push(p);
-  }
-  return { waves: out, found: Object.keys(col).filter((k) => col[k]), headers: names.map((x) => x.n) };
-}
-async function fetchSce() {
-  const sh = await readXlsx(SCE_URL, ["overall"]);
-  if (!sh) throw new Error("the survey file wasn't there");
-  return parseSce(sh);
-}
-
 // ---------- Refresh ----------
 async function refresh(saved, force, say) {
   say = say || (async () => {});
@@ -378,14 +341,10 @@ async function refresh(saved, force, say) {
     try { const h = await fetchHhdc(s.hh, say); if (h) s.hh = h; s.hhChecked = new Date().toISOString(); }
     catch (e) { errors.push("Household Debt and Credit: " + (e.message || e)); }
   }
-  if (force || !s.sce || hoursSince(s.sceChecked) >= SCE_CHECK_HOURS) {
-    await say("Reading the Credit Access survey...");
-    try { s.sce = await fetchSce(); s.sceChecked = new Date().toISOString(); }
-    catch (e) { errors.push("Credit Access survey: " + (e.message || e)); }
-  }
+  delete s.sce; delete s.sceChecked; // the Credit Access survey was dropped
   s.errors = errors.length ? errors : null;
   s.checked = new Date().toISOString();
-  if (s.hh || s.sce) writeJSON(FILE, s);
+  if (s.hh) writeJSON(FILE, s);
   return s;
 }
 
@@ -1019,8 +978,6 @@ function bcSchedule(s) {
   const lastT = (arr) => (arr && arr.length ? arr[arr.length - 1].t : null);
   const hq = s.hh && s.hh.q; // "2026q3"
   if (hq) { const y = +hq.slice(0, 4), q = +hq.slice(5), endNext = y * 12 + q * 3 + 2 /* next quarter's last month */, rel = endNext + 2; rows.push(schedEst("NY Fed household debt report", `Q${q} ${y}`, [schedDay(Math.floor(rel / 12), rel % 12, 3), schedDay(Math.floor(rel / 12), rel % 12, 14)], "quarterly, about 5-6 weeks after quarter-end", { checked: s.hhChecked, err: (s.errors || []).filter((e) => /Household/.test(e)).join("; "), cadence: "checks daily" })); }
-  const w = lastT(s.sce && s.sce.waves);
-  if (w != null) { const rel = w + 5; rows.push(schedEst("NY Fed credit access survey", schedMonName(mi(w)) + " wave", [schedDay(Math.floor(rel / 12), rel % 12, 1), schedDay(Math.floor((rel + 1) / 12), (rel + 1) % 12, 20)], "every 4 months (Feb, Jun, Oct waves)", { checked: s.sceChecked, err: (s.errors || []).filter((e) => /Credit Access/.test(e)).join("; "), cadence: "checks weekly" })); }
   const ft = s.fha && s.fha.pts ? Math.max(...Object.keys(s.fha.pts).map(Number)) : null;
   ["fnm", "fre"].forEach((k) => {
     const g = s.gse && s.gse[k], ts = g ? Object.keys(g.pts || {}).map(Number) : [];
@@ -1488,7 +1445,7 @@ window.onerror = function (m, src, line) { var e = document.getElementById("errs
 </head>
 <body>
 <div class="ticker">Borrower Credit</div>
-<div class="hint">Delinquency and rejections · New York Fed and HUD</div>
+<div class="hint">Delinquency · New York Fed and HUD</div>
 <div id="sched" style="display:none"></div>
 <div class="hint" id="win"></div>
 <div class="hint warn" id="errs"></div>
@@ -1519,15 +1476,13 @@ var CH = [
   { id: "med", kind: "lines", h: 130, title: "", sub: "Credit score of new mortgages", fmt: "int",
     ds: "Median credit score of new mortgages; the 25th and 10th percentiles show the lower end.",
     lines: [["med", "Median", "#FFFFFF"], ["p25", "25th pct.", "#8E8E93", 2], ["p10", "10th pct.", "#636366", 2]] },
-  { id: "rej", kind: "lines", h: 200, title: "Applications rejected", fmt: "pct0", dots: true,
-    ds: "NY Fed Survey of Consumer Expectations, Credit Access (Feb, Jun, Oct): share of applicants rejected, and share of people who didn't apply because they expected a no.",
-    lines: [["mrej", "Mortgage", "#FF9F0A"], ["rrej", "Refi", "#BF5AF2"], ["rej", "Any credit", "#64A8FF"], ["disc", "Discouraged", "#98989F", 2]] },
+  { id: "gone", kind: "lines", h: 0, title: "", ds: "", lines: [] }, // was "Applications rejected" (removed); kept so the other charts keep their numbers
   { id: "fha", kind: "lines", h: 200, title: "Mortgage serious delinquency by loan type", fmt: "pct1",
     ds: "Serious delinquency: 90+ days late or in foreclosure. FHA: share of active single-family loans, seasonally adjusted, bankruptcies included (HUD, monthly). Fannie Mae and Freddie Mac: their conventional single-family loans, not seasonally adjusted (their monthly reports).",
     lines: [["sdq", "FHA", "#FF453A"], ["fnm", "Fannie Mae (conv.)", "#64D2FF"], ["fre", "Freddie Mac (conv.)", "#30D158"]] },
 ];
 // on screen, FHA sits right under "Going seriously delinquent"
-var ORDER = [0, 5, 1, 4], FHA_MSG = "";
+var ORDER = [0, 5, 1], FHA_MSG = "";
 function series(ci, k) {
   var c = CH[ci];
   if (c.id === "del") return (D.del && D.del[k]) || [];
@@ -1535,14 +1490,12 @@ function series(ci, k) {
   if (c.id === "med") return (D.med || []).map(function (p) { return { t: p.t, v: k === "med" ? p.v : p[k] }; }).filter(function (p) { return p.v != null; });
   if (c.id === "fha" && (k === "fnm" || k === "fre")) return (D.gse && D.gse[k]) || [];
   if (c.id === "fha") return (D.fha || []).filter(function (p) { return p[k] != null; }).map(function (p) { return { t: p.t, v: p[k] }; });
-  if (c.id === "rej") return (D.waves || []).filter(function (p) { return p[k] != null; }).map(function (p) { return { t: p.t, v: p[k] }; });
   return [];
 }
 // lines that have data (the survey's mortgage columns may be missing; then "any credit" shows)
 function specs(ci) {
   var c = CH[ci];
   return (c.lines || []).filter(function (ln) {
-    if (c.id === "rej" && ln[0] === "rej" && series(ci, "mrej").length) return false;
     return series(ci, ln[0]).length > 0;
   });
 }
@@ -1559,7 +1512,7 @@ function clampView(v) {
 }
 function valAt(pts, t, gap) { var v = null; for (var i = 0; i < pts.length; i++) { if (pts[i].t <= t + 1.01) v = pts[i]; else break; } return v && t - v.t <= (gap || 3) ? v : null; }
 function lastIn(pts) { var v = null; for (var i = 0; i < pts.length; i++) if (pts[i].t >= HV.a - 1.01 && pts[i].t <= HV.b + 1.01) v = pts[i]; return v; }
-function readAt(ci, pts) { return cur == null ? lastIn(pts) : valAt(pts, cur, CH[ci].id === "rej" ? 4 : 3); }
+function readAt(ci, pts) { return cur == null ? lastIn(pts) : valAt(pts, cur, 3); }
 function fmtv(f, v) { return f === "pct1" ? v.toFixed(1) + "%" : f === "pct0" ? Math.round(v) + "%" : String(Math.round(v)); }
 function ticks(X, h) {
   var s = "", w = HV.b - HV.a;
@@ -1638,7 +1591,7 @@ function drawLines0(ci) {
   });
   s += rightLabels(labs, R, T, B) + cursorLine(X, T, B);
   svg.innerHTML = s; svg.__g = { L: L, R: R, a: HV.a, b: HV.b };
-  var when = read.length ? (c.id === "rej" || c.id === "fha" ? mName(read[0].t) : qName(read[0].t)) : "";
+  var when = read.length ? (c.id === "fha" ? mName(read[0].t) : qName(read[0].t)) : "";
   el("v" + ci).innerHTML = read.slice(0, 2).map(function (x) { return '<span style="color:' + x.c + '">' + esc((on.length > 1 ? (c.id === "fha" ? x.n.split(" (conv.)").join("").split(" Mae").join("").split(" Mac").join("") : x.n) + " " : "") + x.v) + "</span>"; }).join(" · ") + (when ? '<br><span style="color:#8E8E93;font-size:11px;font-weight:600">' + when + "</span>" : "");
 }
 // ---- originations by credit score: stacked bars, share or dollars
@@ -1676,7 +1629,7 @@ function drawAll() {
   if (!HV) HV = span();
   HV = clampView(HV);
   ORDER.forEach(function (i) { if (CH[i].kind === "orig") drawOrig(i); else drawLines(i); });
-  el("win").textContent = (cur == null ? "" : "Reading " + qName(cur) + " · ") + "Household Debt and Credit through " + (D.hhAsOf || "n/a") + " · Credit Access survey through " + (D.sceAsOf || "n/a") + (D.fhaAsOf ? " · FHA through " + D.fhaAsOf : "");
+  el("win").textContent = (cur == null ? "" : "Reading " + qName(cur) + " · ") + "Household Debt and Credit through " + (D.hhAsOf || "n/a") + (D.fhaAsOf ? " · FHA through " + D.fhaAsOf : "");
 }
 // ---- Release schedule: sources by next update, the first few shown, tap for all
 var schedAll = false, SM = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], SW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1729,7 +1682,7 @@ function renderAll() {
   drawAll();
   safe(renderHud);
   if (el("hudl")) el("hudl").innerHTML = D.fhaPdf ? 'HUD report (PDF): <span class="lnk" data-hud="1">' + esc(D.fhaPdf) + "</span>" : "";
-  el("note").textContent = D.note + (D.sceMissing ? " " + D.sceMissing : "") + " Checked " + D.checked + ".";
+  el("note").textContent = D.note + " Checked " + D.checked + ".";
 }
 el("charts").addEventListener("click", function (e) {
   var o = e.target && e.target.closest ? e.target.closest("[data-o]") : null;
@@ -1977,13 +1930,13 @@ safe(build);
 if (D) safe(renderAll); else el("errs").textContent = "Loading the NY Fed data (the first time takes a minute)...";
 // Share as PDF: 16:9 slides, the dates zoomed to on screen, hidden lines
 // skipped. 1) Delinquency: new 90+ by kind of debt | mortgage serious delinquency by loan type
-// (FHA vs Fannie and Freddie). 2) Who's falling behind, why, and failing by vintage (HUD).
-// 3) Where late mortgages go | rejections.
+// (FHA vs Fannie and Freddie). 2) Where late mortgages go, full width. 3) Who's falling
+// behind, why, and failing by vintage (HUD).
 // Plain titles; captions explain; labels at the right edge; a dark banner
 // credits the sources. Vector.
 window.printPdf = function (jsPDF, fonts) {
   if (!D) throw new Error("The data hasn't loaded yet");
-  var W = 792, H = 445.5, hasRej = specs(4).length > 0, hasFha = specs(5).length > 0, PAGES = 1 + (hasRej || hasFha ? 1 : 0) + (D.hud && D.hud.t3 && D.hud.t3.score ? 1 : 0) + (D.hud && D.hud.t2 && D.hud.t2.length ? 1 : 0) + (D.hud && D.hud.fig && D.hud.fig.length ? 1 : 0), PG = 0;
+  var W = 792, H = 445.5, hasFha = specs(5).length > 0, PAGES = 1 + (hasFha ? 1 : 0) + (D.hud && D.hud.t3 && D.hud.t3.score ? 1 : 0) + (D.hud && D.hud.t2 && D.hud.t2.length ? 1 : 0) + (D.hud && D.hud.fig && D.hud.fig.length ? 1 : 0), PG = 0;
   var doc = new jsPDF({ unit: "pt", format: [W, H], orientation: "landscape" });
   var FACE = "helvetica";
   if (fonts && fonts.regular && fonts.bold) {
@@ -2038,7 +1991,7 @@ window.printPdf = function (jsPDF, fonts) {
   function lineChart(ci, x0, x1, T, B, title, sub) {
     // the survey starts in 2013: on its own slide, start the dates there
     var keepA = HV.a;
-    if (CH[ci].id === "rej" || CH[ci].id === "fha") { var f0 = Infinity; specs(ci).forEach(function (ln) { series(ci, ln[0]).forEach(function (p) { f0 = Math.min(f0, p.t); }); }); if (f0 - 3 > HV.a && f0 - 3 < HV.b - 12) HV.a = f0 - 3; }
+    if (CH[ci].id === "fha") { var f0 = Infinity; specs(ci).forEach(function (ln) { series(ci, ln[0]).forEach(function (p) { f0 = Math.min(f0, p.t); }); }); if (f0 - 3 > HV.a && f0 - 3 < HV.b - 12) HV.a = f0 - 3; }
     try { lineChart0(ci, x0, x1, T, B, title, sub); } finally { HV.a = keepA; }
   }
   function lineChart0(ci, x0, x1, T, B, title, sub) {
@@ -2049,7 +2002,7 @@ window.printPdf = function (jsPDF, fonts) {
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), pad = (hi - lo) * 0.1 || 1;
     lo = c.fmt === "int" ? lo - pad : Math.max(0, lo - pad); hi += pad;
     var st = nice(hi - lo, 5); lo = Math.floor(lo / st) * st; hi = Math.ceil(hi / st) * st;
-    var F = box(x0 + 30, x1 - 52, T, B, lo, hi, c.fmt, c.id !== "rej"), labs = [];
+    var F = box(x0 + 30, x1 - 52, T, B, lo, hi, c.fmt, true), labs = [];
     clipTo(F);
     on.slice().reverse().forEach(function (ln) {
       var pts = series(ci, ln[0]), col = pc(ln[2]), bold = ln[0] === "mortgage" || ln[0] === "mrej" || ln[0] === "med" || c.id === "fha" || c.id === "late";
@@ -2085,6 +2038,16 @@ window.printPdf = function (jsPDF, fonts) {
   }
   banner(++PG);
 
+  // ---- 2. Where late mortgages go: on its own, full width (page 1 gave its spot to FHA) ----
+  if (hasFha) {
+    doc.addPage([W, H], "landscape");
+    var cu = series(1, "cure"), ro = series(1, "roll");
+    cu = cu.length ? cu[cu.length - 1] : null; ro = ro.length ? ro[ro.length - 1] : null;
+    var dy2 = headlineFit(cu && ro ? Math.round(cu.v) + "% of Late Mortgages Caught Up, " + Math.round(ro.v) + "% Went 90+ Days Late (" + qName(cu.t) + ")" : "Where Late Mortgages Go");
+    lineChart(1, L1, W - 36, T0 + dy2, B0, "Where 30-60-Day Late Mortgages Go", "% of late mortgages, next quarter (NY Fed)");
+    caption(CH[1].ds, L1, W - 72, H - 44 - 40);
+    banner(++PG);
+  }
   // ---- HUD extras: who's falling behind, why, failing by vintage ----
   function headlineFit(text) {
     var size = 21, lines;
@@ -2177,48 +2140,24 @@ window.printPdf = function (jsPDF, fonts) {
     banner(++PG, "HUD " + (HU.figAt || ""));
   }
 
-  // ---- 2. Where late mortgages go (when FHA took its spot on page 1), and rejections ----
-  if (hasFha || hasRej) {
-    doc.addPage([W, H], "landscape");
-    var lastOf = function (ci, k) { var x = series(ci, k); return x.length ? x[x.length - 1] : null; };
-    var cu = hasFha ? lastOf(1, "cure") : null, ro = hasFha ? lastOf(1, "roll") : null, mr = hasRej ? lastOf(4, "mrej") : null;
-    var hl = [];
-    if (cu && ro) hl.push(Math.round(cu.v) + "% of Late Mortgages Caught Up, " + Math.round(ro.v) + "% Went 90+ Days Late");
-    if (mr) hl.push(Math.round(mr.v) + "% of Mortgage Applicants Rejected");
-    var dy2 = headlineFit(hl.length ? hl.join("; ") : hasRej ? "Credit Applications Rejected" : "Where Late Mortgages Go");
-    if (hasFha && hasRej) {
-      lineChart(1, L1, L1 + half, T0 + dy2, B0, "Where 30-60-Day Late Mortgages Go", "% of late mortgages, next quarter");
-      caption(CH[1].ds, L1, half, H - 44 - 40);
-      lineChart(4, L2, L2 + half, T0 + dy2, B0, "Rejection Rates and Discouraged Borrowers", "% of applicants rejected; % who didn't apply expecting a no");
-      caption(CH[4].ds + (D.sceMissing ? " " + D.sceMissing : ""), L2, half, H - 44 - 40);
-    } else if (hasFha) {
-      lineChart(1, L1, W - 36, T0 + dy2, B0, "Where 30-60-Day Late Mortgages Go", "% of late mortgages, next quarter");
-      caption(CH[1].ds, L1, W - 72, H - 44 - 40);
-    } else {
-      lineChart(4, L1, W - 36, T0 + dy2, B0, "Rejection Rates and Discouraged Borrowers", "% of applicants rejected; % who didn't apply expecting a no");
-      caption(CH[4].ds + (D.sceMissing ? " " + D.sceMissing : ""), L1, W - 72, H - 44 - 40);
-    }
-    banner(++PG);
-  }
   return doc;
 };
 
-window.shareInfo = function () { return { title: "Borrower Credit", name: "Delinquency and rejections", asOf: D ? D.hhAsOf || "" : "" }; };
+window.shareInfo = function () { return { title: "Borrower Credit", name: "Delinquency", asOf: D ? D.hhAsOf || "" : "" }; };
 </script>
 </body>
 </html>`;
 
 
 // ---------- Run ----------
-const SOURCES = "Sources: Federal Reserve Bank of New York, Quarterly Report on Household Debt and Credit (NY Fed Consumer Credit Panel/Equifax): new seriously delinquent balances, 30-60-day late mortgage transitions; NY Fed SCE Credit Access Survey (rejections, discouraged borrowers); U.S. Department of HUD/FHA, Single Family Loan Performance Trends: Tables 1-3 (delinquency, reasons, loan characteristics) and Figure 1 (failure rates, read from the chart). Gray columns: NBER recessions.";
-const NOTE = "Delinquency: the share of each loan type's balances that became 90+ days late over the past four quarters, as the NY Fed reports it. Late mortgages: of balances 30-60 days late, the share current or 90+ days late a quarter later. Rejections: from the NY Fed's Credit Access Survey, fielded every four months to about 1,000 households, so single readings are noisy; the rejection rate is among people who applied, and discouraged borrowers are people who wanted credit but didn't apply because they expected to be turned down. FHA: share of active FHA single-family loans by count, seasonally adjusted, from HUD's monthly report; serious delinquency is 90+ days late plus in foreclosure plus in bankruptcy. Who's falling behind: serious delinquency for each group of active FHA loans in HUD's newest report (Table 3), with the same group a year earlier; shares are each group's share of loans in its panel (streamline refinances have no credit score, so they're left out of the score panel). Why: HUD's reasons for new 90+ day delinquencies by fiscal quarter (October starts the fiscal year), with the current quarter's months so far; National emergency includes the COVID-19 pandemic. Failing by vintage: loans gone to claim or in foreclosure as a share of each fiscal year's loans, by months since origination, read from the lines of HUD's Figure 1, so values are good to about 0.01 points. The NY Fed and HUD revise recent periods.";
+const SOURCES = "Sources: Federal Reserve Bank of New York, Quarterly Report on Household Debt and Credit (NY Fed Consumer Credit Panel/Equifax): new seriously delinquent balances, 30-60-day late mortgage transitions; U.S. Department of HUD/FHA, Single Family Loan Performance Trends: Tables 1-3 (delinquency, reasons, loan characteristics) and Figure 1 (failure rates, read from the chart). Gray columns: NBER recessions.";
+const NOTE = "Delinquency: the share of each loan type's balances that became 90+ days late over the past four quarters, as the NY Fed reports it. Late mortgages: of balances 30-60 days late, the share current or 90+ days late a quarter later. FHA: share of active FHA single-family loans by count, seasonally adjusted, from HUD's monthly report; serious delinquency is 90+ days late plus in foreclosure plus in bankruptcy. Who's falling behind: serious delinquency for each group of active FHA loans in HUD's newest report (Table 3), with the same group a year earlier; shares are each group's share of loans in its panel (streamline refinances have no credit score, so they're left out of the score panel). Why: HUD's reasons for new 90+ day delinquencies by fiscal quarter (October starts the fiscal year), with the current quarter's months so far; National emergency includes the COVID-19 pandemic. Failing by vintage: loans gone to claim or in foreclosure as a share of each fiscal year's loans, by months since origination, read from the lines of HUD's Figure 1, so values are good to about 0.01 points. The NY Fed and HUD revise recent periods.";
 function payload(s) {
   if (!s) return null;
-  const hh = s.hh || {}, sce = s.sce || {}, waves = sce.waves || [];
+  const hh = s.hh || {};
   const lastT = (arr) => (arr && arr.length ? arr[arr.length - 1].t : null);
   const qn = (t) => (t == null ? null : `Q${Math.floor((t % 12) / 3) + 1} ${Math.floor(t / 12)}`);
   const mn = (t) => (t == null ? null : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][t % 12] + " " + Math.floor(t / 12));
-  const found = sce.found || [];
   const fp = (s.fha && s.fha.pts) || {};
   const fha = Object.keys(fp).map(Number).sort((a, b) => a - b).filter((t) => fp[t].s).map((t) => ({ t, d30: fp[t].s[0], d60: fp[t].s[1], sdq: fp[t].s[2] }));
   const errs = [].concat(s.errors || [], s.fhaErrors || [], s.gseErrors || []);
@@ -2230,9 +2169,8 @@ function payload(s) {
     sched: bcSchedule(s),
     fhaPdf: s.fha && Object.keys(s.fha.files || {}).length ? mn(Math.max(...Object.keys(s.fha.files).map(Number))) : null,
     del: hh.del || null, cure: hh.cure || [], roll: hh.roll || [], orig: hh.orig || [], med: hh.med || [], brk: hh.brk || null,
-    waves, recessions: RECESSIONS,
-    hhAsOf: qn(lastT(hh.del && hh.del.mortgage)), sceAsOf: mn(lastT(waves)),
-    sceMissing: waves.length && !found.includes("mrej") ? "The survey file has no mortgage-specific rejection column this release, so the chart shows the rejection rate for any credit. Columns: " + (sce.headers || []).join(", ") + "." : "",
+    recessions: RECESSIONS,
+    hhAsOf: qn(lastT(hh.del && hh.del.mortgage)),
     sources: SOURCES, note: NOTE, errors: errs.length ? errs : null,
     checked: s.checked ? new Date(s.checked).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "",
   };
@@ -2271,18 +2209,18 @@ async function openFullScreen(saved) {
       const say = async (t) => { try { if (isOpen()) await wv.evaluateJavaScript(`window.setStatus(${JSON.stringify(t)});0`); } catch (e) {} };
       const fresh = await refresh(saved, false, say);
       latest = fresh;
-      if (isOpen() && (fresh.hh || fresh.sce)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(fresh))});0`);
+      if (isOpen() && fresh.hh) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(fresh))});0`);
       else if (isOpen() && fresh.errors) await wv.evaluateJavaScript(`document.getElementById("errs").textContent = ${JSON.stringify("Couldn't load: " + fresh.errors.join(" · "))};0`);
       // then HUD's FHA reports (the first time, a few minutes to read back to 2015)
       const sayF = async (t) => { try { if (isOpen()) await wv.evaluateJavaScript(`window.setFhaStatus(${JSON.stringify(t)});0`); } catch (e) {} };
       const withFha = await refreshFha(fresh, sayF, isOpen);
       latest = withFha;
-      if (isOpen() && (withFha.hh || withFha.sce || withFha.fha)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(withFha))});0`);
+      if (isOpen() && (withFha.hh || withFha.fha)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(withFha))});0`);
       // then Fannie and Freddie for the conventional comparison
       const withGse = await refreshGse(withFha, sayF, isOpen);
       latest = withGse;
       await sayF("");
-      if (isOpen() && (withGse.hh || withGse.sce || withGse.fha)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(withGse))});0`);
+      if (isOpen() && (withGse.hh || withGse.fha)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(withGse))});0`);
     } catch (e) {
       try { await wv.evaluateJavaScript(`document.getElementById("errs").textContent = ${JSON.stringify("Couldn't load the data: " + (e.message || e))};0`); } catch (e2) {}
     }
