@@ -314,6 +314,10 @@
  "BorrowerCreditWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "The FHA chart is now \"Mortgage serious delinquency by loan type\": FHA vs Fannie Mae vs Freddie Mac, without the 30- and 60-day lines. In Share as PDF it sits on page 1 next to Going seriously delinquent, and Where late mortgages go now shares a slide with Rejections."
+  },
+  {
+   "d": "2026-11-19",
    "t": "Fixed the Fannie Mae and Freddie Mac lines on the FHA delinquency chart: each report now fills in 13 months, so both lines rebuild back to 2015 over about two opens. If either site blocks the download, you'll see it in orange instead of a missing line."
   },
   {

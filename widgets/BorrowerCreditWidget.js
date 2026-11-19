@@ -1505,7 +1505,7 @@ function qName(t) { return "Q" + (Math.floor((((t % 12) + 12) % 12) / 3) + 1) + 
 function mName(t) { return MON[((t % 12) + 12) % 12] + " " + Math.floor(t / 12); }
 function nice(range, n) { if (!(range > 0)) return 1; var rough = range / (n || 4), p = Math.pow(10, Math.floor(Math.log(rough) / Math.LN10)), c = [1, 2, 2.5, 5, 10]; for (var i = 0; i < c.length; i++) if (c[i] * p >= rough) return c[i] * p; return 10 * p; }
 var BANDS = ["<620", "620-659", "660-719", "720-759", "760+"], BCOL = ["#FF453A", "#FF9F0A", "#FFD60A", "#64D2FF", "#30D158"];
-var hidden = { "0:heloc": 1, "0:student": 1, "5:d60": 1 }, HV = null, cur = null, origMode = "share";
+var hidden = { "0:heloc": 1, "0:student": 1 }, HV = null, cur = null, origMode = "share";
 // The charts. Lines: [key, label, color, style] (style 2 = dashed)
 var CH = [
   { id: "del", kind: "lines", h: 210, title: "Going seriously delinquent", fmt: "pct1",
@@ -1522,9 +1522,9 @@ var CH = [
   { id: "rej", kind: "lines", h: 200, title: "Applications rejected", fmt: "pct0", dots: true,
     ds: "NY Fed Survey of Consumer Expectations, Credit Access (Feb, Jun, Oct): share of applicants rejected, and share of people who didn't apply because they expected a no.",
     lines: [["mrej", "Mortgage", "#FF9F0A"], ["rrej", "Refi", "#BF5AF2"], ["rej", "Any credit", "#64A8FF"], ["disc", "Discouraged", "#98989F", 2]] },
-  { id: "fha", kind: "lines", h: 200, title: "FHA delinquency", fmt: "pct1",
-    ds: "Share of active FHA single-family loans, seasonally adjusted (HUD, monthly). Serious: 90+ days late, in foreclosure or in bankruptcy. 30-day and 60-day: earlier stages. For comparison, conventional loans: Fannie Mae's and Freddie Mac's single-family serious delinquency (90+ days late or in foreclosure; not seasonally adjusted, and bankruptcies aren't counted separately), from their monthly reports.",
-    lines: [["sdq", "FHA serious", "#FF453A"], ["d30", "FHA 30-day", "#FFD60A"], ["d60", "FHA 60-day", "#FF9F0A"], ["fnm", "Fannie Mae (conv.)", "#64D2FF"], ["fre", "Freddie Mac (conv.)", "#30D158"]] },
+  { id: "fha", kind: "lines", h: 200, title: "Mortgage serious delinquency by loan type", fmt: "pct1",
+    ds: "Serious delinquency: 90+ days late or in foreclosure. FHA: share of active single-family loans, seasonally adjusted, bankruptcies included (HUD, monthly). Fannie Mae and Freddie Mac: their conventional single-family loans, not seasonally adjusted (their monthly reports).",
+    lines: [["sdq", "FHA", "#FF453A"], ["fnm", "Fannie Mae (conv.)", "#64D2FF"], ["fre", "Freddie Mac (conv.)", "#30D158"]] },
 ];
 // on screen, FHA sits right under "Going seriously delinquent"
 var ORDER = [0, 5, 1, 4], FHA_MSG = "";
@@ -1639,7 +1639,7 @@ function drawLines0(ci) {
   s += rightLabels(labs, R, T, B) + cursorLine(X, T, B);
   svg.innerHTML = s; svg.__g = { L: L, R: R, a: HV.a, b: HV.b };
   var when = read.length ? (c.id === "rej" || c.id === "fha" ? mName(read[0].t) : qName(read[0].t)) : "";
-  el("v" + ci).innerHTML = read.slice(0, 2).map(function (x) { return '<span style="color:' + x.c + '">' + esc((on.length > 1 ? x.n + " " : "") + x.v) + "</span>"; }).join(" · ") + (when ? '<br><span style="color:#8E8E93;font-size:11px;font-weight:600">' + when + "</span>" : "");
+  el("v" + ci).innerHTML = read.slice(0, 2).map(function (x) { return '<span style="color:' + x.c + '">' + esc((on.length > 1 ? (c.id === "fha" ? x.n.split(" (conv.)").join("").split(" Mae").join("").split(" Mac").join("") : x.n) + " " : "") + x.v) + "</span>"; }).join(" · ") + (when ? '<br><span style="color:#8E8E93;font-size:11px;font-weight:600">' + when + "</span>" : "");
 }
 // ---- originations by credit score: stacked bars, share or dollars
 function drawOrig(ci) {
@@ -1976,14 +1976,14 @@ window.addEventListener("resize", function () { safe(renderAll); });
 safe(build);
 if (D) safe(renderAll); else el("errs").textContent = "Loading the NY Fed data (the first time takes a minute)...";
 // Share as PDF: 16:9 slides, the dates zoomed to on screen, hidden lines
-// skipped. 1) Delinquency: new 90+ by loan type | where late mortgages go.
-// 2) FHA delinquency, then who's falling behind, why, and failing by vintage. (Originations by credit score | score of new
-// mortgages. 4) Rejections.
+// skipped. 1) Delinquency: new 90+ by kind of debt | mortgage serious delinquency by loan type
+// (FHA vs Fannie and Freddie). 2) Who's falling behind, why, and failing by vintage (HUD).
+// 3) Where late mortgages go | rejections.
 // Plain titles; captions explain; labels at the right edge; a dark banner
 // credits the sources. Vector.
 window.printPdf = function (jsPDF, fonts) {
   if (!D) throw new Error("The data hasn't loaded yet");
-  var W = 792, H = 445.5, hasRej = specs(4).length > 0, hasFha = specs(5).length > 0, PAGES = 1 + (hasRej ? 1 : 0) + (hasFha ? 1 : 0) + (D.hud && D.hud.t3 && D.hud.t3.score ? 1 : 0) + (D.hud && D.hud.t2 && D.hud.t2.length ? 1 : 0) + (D.hud && D.hud.fig && D.hud.fig.length ? 1 : 0), PG = 0;
+  var W = 792, H = 445.5, hasRej = specs(4).length > 0, hasFha = specs(5).length > 0, PAGES = 1 + (hasRej || hasFha ? 1 : 0) + (D.hud && D.hud.t3 && D.hud.t3.score ? 1 : 0) + (D.hud && D.hud.t2 && D.hud.t2.length ? 1 : 0) + (D.hud && D.hud.fig && D.hud.fig.length ? 1 : 0), PG = 0;
   var doc = new jsPDF({ unit: "pt", format: [W, H], orientation: "landscape" });
   var FACE = "helvetica";
   if (fonts && fonts.regular && fonts.bold) {
@@ -2052,7 +2052,7 @@ window.printPdf = function (jsPDF, fonts) {
     var F = box(x0 + 30, x1 - 52, T, B, lo, hi, c.fmt, c.id !== "rej"), labs = [];
     clipTo(F);
     on.slice().reverse().forEach(function (ln) {
-      var pts = series(ci, ln[0]), col = pc(ln[2]), bold = ln[0] === "mortgage" || ln[0] === "mrej" || ln[0] === "med" || ln[0] === "sdq" || c.id === "late";
+      var pts = series(ci, ln[0]), col = pc(ln[2]), bold = ln[0] === "mortgage" || ln[0] === "mrej" || ln[0] === "med" || c.id === "fha" || c.id === "late";
       doc.setDrawColor(col[0], col[1], col[2]); doc.setLineWidth(bold ? 2.2 : 1.4); if (ln[3] === 2) doc.setLineDashPattern([3, 2], 0);
       for (var k = 1; k < pts.length; k++) if (pts[k].t >= HV.a - 3 && pts[k - 1].t <= HV.b + 3) doc.line(F.X(pts[k - 1].t), F.Y(pts[k - 1].v), F.X(pts[k].t), F.Y(pts[k].v));
       doc.setLineDashPattern([], 0);
@@ -2066,26 +2066,25 @@ window.printPdf = function (jsPDF, fonts) {
   }
 
   var L1 = 36, half = (W - 72 - 30) / 2, L2 = 36 + half + 30, T0 = 110, B0 = H - 44 - 92;
-  // ---- 1. Delinquency ----
-  headline("Mortgage Delinquency");
-  lineChart(0, L1, L1 + half, T0, B0, "Balances Newly 90+ Days Late, by Loan Type", "% of balances, four-quarter sum");
-  caption(CH[0].ds, L1, half, H - 44 - 40);
-  lineChart(1, L2, L2 + half, T0, B0, "Where 30-60-Day Late Mortgages Go", "% of late mortgages, next quarter");
-  caption(CH[1].ds, L2, half, H - 44 - 40);
-  banner(++PG);
-
-  // ---- FHA ----
+  // ---- 1. Delinquency: by kind of debt, and mortgages by loan type (FHA vs Fannie and Freddie) ----
   if (hasFha) {
-    doc.addPage([W, H], "landscape");
     // the headline: FHA's serious rate against the conventional (GSE) rate
     var fl = series(5, "sdq"), gl = ["fnm", "fre"].map(function (k) { var x = series(5, k); return x.length ? x[x.length - 1].v : null; }).filter(function (v) { return v != null; });
     var fv = fl.length ? fl[fl.length - 1].v : null, gv = gl.length ? gl.reduce(function (a, b) { return a + b; }, 0) / gl.length : null;
-    headlineFit(fv != null && gv ? "FHA Serious Delinquency at " + fv.toFixed(1) + "%, About " + (fv / gv).toFixed(0) + "x Conventional Loans' " + gv.toFixed(1) + "% (Fannie and Freddie)" : fv != null ? "FHA Serious Delinquency at " + fv.toFixed(1) + "%" : "FHA Delinquency");
-    lineChart(5, L1, W - 36, T0, B0, "FHA Loans Past Due, With Conventional Loans for Comparison", "% of loans; FHA seasonally adjusted (HUD); Fannie Mae and Freddie Mac serious delinquency, not adjusted");
-    caption(CH[5].ds, L1, W - 72, H - 44 - 40);
-    var fs = series(5, "sdq").filter(function (p) { return p.t >= HV.a && p.t <= HV.b; });
-    banner(++PG, fs.length ? mName(fs[0].t) + " to " + mName(fs[fs.length - 1].t) : null);
+    var dy1 = headlineFit(fv != null && gv ? "FHA Serious Delinquency at " + fv.toFixed(1) + "%, About " + (fv / gv).toFixed(0) + "x Conventional Loans' " + gv.toFixed(1) + "%" : fv != null ? "FHA Serious Delinquency at " + fv.toFixed(1) + "% of Loans" : "Mortgage Delinquency");
+    lineChart(0, L1, L1 + half, T0 + dy1, B0, "Balances Newly 90+ Days Late, by Kind of Debt", "% of balances, four-quarter sum (NY Fed)");
+    caption(CH[0].ds, L1, half, H - 44 - 40);
+    lineChart(5, L2, L2 + half, T0 + dy1, B0, "Mortgage Serious Delinquency by Loan Type", "% of loans; FHA seasonally adjusted, Fannie and Freddie not");
+    caption(CH[5].ds, L2, half, H - 44 - 40);
+  } else {
+    headline("Mortgage Delinquency");
+    lineChart(0, L1, L1 + half, T0, B0, "Balances Newly 90+ Days Late, by Kind of Debt", "% of balances, four-quarter sum");
+    caption(CH[0].ds, L1, half, H - 44 - 40);
+    lineChart(1, L2, L2 + half, T0, B0, "Where 30-60-Day Late Mortgages Go", "% of late mortgages, next quarter");
+    caption(CH[1].ds, L2, half, H - 44 - 40);
   }
+  banner(++PG);
+
   // ---- HUD extras: who's falling behind, why, failing by vintage ----
   function headlineFit(text) {
     var size = 21, lines;
@@ -2178,12 +2177,27 @@ window.printPdf = function (jsPDF, fonts) {
     banner(++PG, "HUD " + (HU.figAt || ""));
   }
 
-  // ---- 3. Rejections ----
-  if (hasRej) {
+  // ---- 2. Where late mortgages go (when FHA took its spot on page 1), and rejections ----
+  if (hasFha || hasRej) {
     doc.addPage([W, H], "landscape");
-    headline("Credit Applications Rejected");
-    lineChart(4, L1, W - 36, T0, B0, "Rejection Rates and Discouraged Borrowers", "% of applicants rejected; % who didn't apply expecting a no");
-    caption(CH[4].ds + (D.sceMissing ? " " + D.sceMissing : ""), L1, W - 72, H - 44 - 40);
+    var lastOf = function (ci, k) { var x = series(ci, k); return x.length ? x[x.length - 1] : null; };
+    var cu = hasFha ? lastOf(1, "cure") : null, ro = hasFha ? lastOf(1, "roll") : null, mr = hasRej ? lastOf(4, "mrej") : null;
+    var hl = [];
+    if (cu && ro) hl.push(Math.round(cu.v) + "% of Late Mortgages Caught Up, " + Math.round(ro.v) + "% Went 90+ Days Late");
+    if (mr) hl.push(Math.round(mr.v) + "% of Mortgage Applicants Rejected");
+    var dy2 = headlineFit(hl.length ? hl.join("; ") : hasRej ? "Credit Applications Rejected" : "Where Late Mortgages Go");
+    if (hasFha && hasRej) {
+      lineChart(1, L1, L1 + half, T0 + dy2, B0, "Where 30-60-Day Late Mortgages Go", "% of late mortgages, next quarter");
+      caption(CH[1].ds, L1, half, H - 44 - 40);
+      lineChart(4, L2, L2 + half, T0 + dy2, B0, "Rejection Rates and Discouraged Borrowers", "% of applicants rejected; % who didn't apply expecting a no");
+      caption(CH[4].ds + (D.sceMissing ? " " + D.sceMissing : ""), L2, half, H - 44 - 40);
+    } else if (hasFha) {
+      lineChart(1, L1, W - 36, T0 + dy2, B0, "Where 30-60-Day Late Mortgages Go", "% of late mortgages, next quarter");
+      caption(CH[1].ds, L1, W - 72, H - 44 - 40);
+    } else {
+      lineChart(4, L1, W - 36, T0 + dy2, B0, "Rejection Rates and Discouraged Borrowers", "% of applicants rejected; % who didn't apply expecting a no");
+      caption(CH[4].ds + (D.sceMissing ? " " + D.sceMissing : ""), L1, W - 72, H - 44 - 40);
+    }
     banner(++PG);
   }
   return doc;
