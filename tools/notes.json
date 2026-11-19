@@ -314,6 +314,10 @@
  "BorrowerCreditWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "Fixed the Fannie Mae and Freddie Mac lines on the FHA delinquency chart: each report now fills in 13 months, so both lines rebuild back to 2015 over about two opens. If either site blocks the download, you'll see it in orange instead of a missing line."
+  },
+  {
+   "d": "2026-11-19",
    "t": "FHA delinquency now compares against conventional loans: Fannie Mae's and Freddie Mac's serious delinquency, back to 2016 (fills in over a few opens). PDF: one Who slide with FICO, first-time vs repeat and DPA; the reasons slide says which reasons you hid."
   },
   {

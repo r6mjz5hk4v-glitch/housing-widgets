@@ -729,29 +729,47 @@ async function refreshFha(saved, say, keepGoing) {
 // months in a table, and the newest month in its highlights. Read with pdf.js.
 const GSE = {
   fnm: { name: "Fannie Mae", url: (t) => { const y = Math.floor(t / 12), m = t % 12, last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); return [`https://www.fanniemae.com/media/document/pdf/${String(m + 1).padStart(2, "0")}${last}${String(y).slice(2)}.pdf`]; },
-    lead: /serious delinquency rate[^%]{0,160}?(\d+\.\d+)\s*%/i },
+    lead: /serious delinquency rate/i },
   fre: { name: "Freddie Mac", url: (t) => { const y = Math.floor(t / 12), m = t % 12; return [`https://www.freddiemac.com/investors/financials/pdf/${String(m + 1).padStart(2, "0")}${String(y).slice(2)}mvs.pdf`]; },
-    lead: /single-family (?:serious )?delinquency rate[^%]{0,160}?(\d+\.\d+)\s*%/i },
+    lead: /single-family (?:serious )?delinquency rate/i },
 };
-const GSE_TRIES_PER_OPEN = 6; // reports tried per company per open
-// rows like "July 2025 0.42% 1.12% 0.54% 0.53% 0.64%" or "Feb 0.41% 1.25% ...";
-// the column is the one whose newest value matches the highlights (else the 4th)
+const GSE_V = 2;              // bump to throw away saved points read by an older reader
+const GSE_TRIES_PER_OPEN = 8; // reports tried per company per open
+// The highlights give the newest month's rate, e.g. "increased 1 basis point to 0.59% in July"
+// or "increased from 0.60% in August to 0.61% in September": take the one for the report's month.
+function gseLead(text, t, lead) {
+  const m = text.match(lead);
+  if (!m) return null;
+  const win = text.slice(m.index, m.index + 220);
+  const hits = [...win.matchAll(/(\d+\.\d+)\s*%\s+(?:in|for)\s+([A-Z][a-z]+)/g)].filter((h) => MON3.includes(h[2].slice(0, 3)));
+  const same = hits.find((h) => MON3.indexOf(h[2].slice(0, 3)) === t % 12);
+  if (same) return +same[1];
+  if (hits.length) return +hits[hits.length - 1][1];
+  const any = win.match(/(\d+\.\d+)\s*%/);
+  return any ? +any[1] : null;
+}
+// Table rows like "July 2025 0.42% 1.12% 0.54% 0.53% 0.64%" or "Feb 0.41% 1.25% ...". The table
+// beside it often shares the line ("... 0.64% July 2025 (38) (6) 0.04"), so only the leading
+// run of percentages counts. The column is the one whose newest value matches the highlights.
 function parseGse(pages, t, lead) {
   const all = pages.flat(), text = all.join(" ");
-  const lm = text.match(lead), want = lm ? +lm[1] : null;
-  const row = new RegExp(`^(${MON3.join("|")})[a-z]*\\.?\\s*(\\d{4})?\\s+((?:\\d+\\.\\d+%?\\s*){3,8})$`);
-  // runs of consecutive month rows: each run is one table
+  const want = gseLead(text, t, lead);
+  const row = new RegExp(`^(${MON3.join("|")})[a-z]*\\.?\\s*(\\d{4})?\\s+((?:\\d+\\.\\d+%?\\s+){2,9}\\d+\\.\\d+%?)(?=\\s|$)`);
+  // runs of month rows: each run is one table (a few stray lines from the next table are allowed)
   const runs = [];
-  let cur = null;
+  let cur = null, gap = 0;
   for (const l of all) {
     const m = l.match(row);
-    if (!m) { if (cur && cur.length) runs.push(cur); cur = null; continue; }
-    (cur = cur || []).push({ mi: MON3.indexOf(m[1]), y: m[2] ? +m[2] : null, v: m[3].trim().split(/\s+/).map((x) => +x.replace("%", "")) });
+    let toks = m ? m[3].trim().split(/\s+/) : [];
+    if (m && toks[0].endsWith("%")) { const k = toks.findIndex((x) => !x.endsWith("%")); if (k > 0) toks = toks.slice(0, k); }
+    if (toks.length < 3) { if (cur && ++gap > 3) { runs.push(cur); cur = null; } continue; }
+    gap = 0;
+    (cur = cur || []).push({ mi: MON3.indexOf(m[1]), y: m[2] ? +m[2] : null, v: toks.map((x) => +x.replace("%", "")) });
   }
-  if (cur && cur.length) runs.push(cur);
+  if (cur) runs.push(cur);
   for (const run of runs.filter((r) => r.length >= 6)) {
     // years: given, or worked back from the report's month (the newest row)
-    const asc = run.length > 1 && ((run[1].mi - run[0].mi + 12) % 12) === 1;
+    const asc = ((run[1].mi - run[0].mi + 12) % 12) === 1;
     const ordered = asc ? run.slice() : run.slice().reverse();
     let y = Math.floor(t / 12), prev = null;
     for (let i = ordered.length - 1; i >= 0; i--) {
@@ -777,14 +795,17 @@ function parseGse(pages, t, lead) {
 async function gseFile(k, t) {
   let answered = 0;
   for (const url of GSE[k].url(t)) {
+    let status = 0, data = null;
     try {
       const r = new Request(url); r.timeoutInterval = 20; r.headers = { "User-Agent": UA };
-      const data = await r.load(), status = r.response && r.response.statusCode;
+      data = await r.load(); status = r.response && r.response.statusCode;
       answered++;
-      if (status && status >= 400) continue;
-      const b64 = data ? data.toBase64String() : "";
-      if (b64.startsWith("JVBERi")) return { url, b64 };
-    } catch (e) {}
+    } catch (e) { continue; }
+    // a refusal (not a missing file) is worth saying out loud
+    if (status === 401 || status === 403 || status === 429) throw new Error(`${GSE[k].name}'s site turned the download away (HTTP ${status})`);
+    if (status && status >= 400) continue;
+    const b64 = data ? data.toBase64String() : "";
+    if (b64.startsWith("JVBERi")) return { url, b64 };
   }
   if (!answered) throw new Error(`couldn't reach ${GSE[k].name}`);
   return null;
@@ -806,7 +827,8 @@ async function refreshGse(saved, say, keepGoing) {
   s.gse = s.gse || {};
   const errs = [];
   for (const k of Object.keys(GSE)) {
-    const g = s.gse[k] = s.gse[k] || { pts: {}, src: {}, files: {}, tried: {}, floor: null };
+    if (s.gse[k] && s.gse[k].v !== GSE_V) delete s.gse[k]; // read by an older reader: start over
+    const g = s.gse[k] = s.gse[k] || { v: GSE_V, pts: {}, src: {}, files: {}, tried: {}, floor: null };
     const fresh = (t) => g.tried[t] && hoursSince(g.tried[t]) < FHA_RETRY_DAYS * 24;
     let tries = 0;
     try {
@@ -831,7 +853,9 @@ async function refreshGse(saved, say, keepGoing) {
           if (g.files[t] || fresh(t)) continue;
           await say(`Reading ${GSE[k].name}'s reports back to ${Math.floor(FHA_FROM / 12)}: ${monthName(t)}...`);
           tries++; triedAny = true;
-          if (await readGse(g, k, t)) { found = true; break; }
+          let ok = false;
+          try { ok = await readGse(g, k, t); } catch (e) { if (!/couldn't find/.test(e.message)) throw e; g.skipped = (g.skipped || 0) + 1; } // an odd old report: skip it, keep going back
+          if (ok) { found = true; break; }
         }
         if (found) continue;
         if (triedAny) { g.floor = oldest - 1; g.floorAt = new Date().toISOString(); } // nothing older on their site under these names
