@@ -395,8 +395,12 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "d8324d95",
+   "hash": "9a59c097",
    "notes": [
+    {
+     "d": "2026-11-18",
+     "t": "Three new FHA sections from HUD's monthly report: who's falling behind (serious delinquency by credit score, down payment help, first-time buyers, vintage and more, vs a year ago), why borrowers fall behind, and failure rates by loan vintage. Each gets its own slide in Share as PDF. The first open after updating reads HUD's newest report again, so give it an extra minute."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -404,10 +408,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
