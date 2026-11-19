@@ -404,6 +404,10 @@
  "UnemploymentWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "The Layoffs chart now overlays news mentions of \"layoff\"/\"layoffs\" (GDELT, since 2017) as gray dots on their own right-side scale, lined up so 2019's level sits on the dotted 2019 line. Tap its chip to hide it; the PDF Layoffs slide shows it too, with a new release-schedule row."
+  },
+  {
+   "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
   },
   {
