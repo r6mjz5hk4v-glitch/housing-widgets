@@ -314,6 +314,10 @@
  "BorrowerCreditWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "FHA delinquency now compares against conventional loans: Fannie Mae's and Freddie Mac's serious delinquency, back to 2016 (fills in over a few opens). PDF: one Who slide with FICO, first-time vs repeat and DPA; the reasons slide says which reasons you hid."
+  },
+  {
+   "d": "2026-11-19",
    "t": "Hiding a reason under FHA \"Share by reason\" now re-scales the reasons left to 100%, and the new-delinquencies count above shows only their loans. The sentence and the PDF follow."
   },
   {

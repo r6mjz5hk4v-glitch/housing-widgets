@@ -723,6 +723,128 @@ async function refreshFha(saved, say, keepGoing) {
   return s;
 }
 
+// ---------- Conventional comparison: Fannie Mae and Freddie Mac ----------
+// Each company's monthly report (PDF) gives its single-family serious delinquency
+// rate (90+ days late or in foreclosure; not seasonally adjusted) for the last 13
+// months in a table, and the newest month in its highlights. Read with pdf.js.
+const GSE = {
+  fnm: { name: "Fannie Mae", url: (t) => { const y = Math.floor(t / 12), m = t % 12, last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); return [`https://www.fanniemae.com/media/document/pdf/${String(m + 1).padStart(2, "0")}${last}${String(y).slice(2)}.pdf`]; },
+    lead: /serious delinquency rate[^%]{0,160}?(\d+\.\d+)\s*%/i },
+  fre: { name: "Freddie Mac", url: (t) => { const y = Math.floor(t / 12), m = t % 12; return [`https://www.freddiemac.com/investors/financials/pdf/${String(m + 1).padStart(2, "0")}${String(y).slice(2)}mvs.pdf`]; },
+    lead: /single-family (?:serious )?delinquency rate[^%]{0,160}?(\d+\.\d+)\s*%/i },
+};
+const GSE_TRIES_PER_OPEN = 6; // reports tried per company per open
+// rows like "July 2025 0.42% 1.12% 0.54% 0.53% 0.64%" or "Feb 0.41% 1.25% ...";
+// the column is the one whose newest value matches the highlights (else the 4th)
+function parseGse(pages, t, lead) {
+  const all = pages.flat(), text = all.join(" ");
+  const lm = text.match(lead), want = lm ? +lm[1] : null;
+  const row = new RegExp(`^(${MON3.join("|")})[a-z]*\\.?\\s*(\\d{4})?\\s+((?:\\d+\\.\\d+%?\\s*){3,8})$`);
+  // runs of consecutive month rows: each run is one table
+  const runs = [];
+  let cur = null;
+  for (const l of all) {
+    const m = l.match(row);
+    if (!m) { if (cur && cur.length) runs.push(cur); cur = null; continue; }
+    (cur = cur || []).push({ mi: MON3.indexOf(m[1]), y: m[2] ? +m[2] : null, v: m[3].trim().split(/\s+/).map((x) => +x.replace("%", "")) });
+  }
+  if (cur && cur.length) runs.push(cur);
+  for (const run of runs.filter((r) => r.length >= 6)) {
+    // years: given, or worked back from the report's month (the newest row)
+    const asc = run.length > 1 && ((run[1].mi - run[0].mi + 12) % 12) === 1;
+    const ordered = asc ? run.slice() : run.slice().reverse();
+    let y = Math.floor(t / 12), prev = null;
+    for (let i = ordered.length - 1; i >= 0; i--) {
+      const r = ordered[i];
+      if (r.y) y = r.y; else if (prev != null && r.mi > prev) y--;
+      r.t = y * 12 + r.mi; prev = r.mi;
+    }
+    const newest = ordered[ordered.length - 1];
+    if (newest.t !== t) continue;
+    const n = Math.min(...ordered.map((r) => r.v.length));
+    let col = -1;
+    if (want != null) col = newest.v.findIndex((v, k) => k < n && Math.abs(v - want) < 0.005);
+    if (col < 0 && want == null && n >= 4) col = 3;
+    if (col < 0) continue;
+    const out = {};
+    ordered.forEach((r) => { if (r.v[col] != null && r.v[col] < 20) out[r.t] = r.v[col]; });
+    return out;
+  }
+  // no table: the newest month from the highlights alone
+  if (want != null) { const o = {}; o[t] = want; return o; }
+  return null;
+}
+async function gseFile(k, t) {
+  let answered = 0;
+  for (const url of GSE[k].url(t)) {
+    try {
+      const r = new Request(url); r.timeoutInterval = 20; r.headers = { "User-Agent": UA };
+      const data = await r.load(), status = r.response && r.response.statusCode;
+      answered++;
+      if (status && status >= 400) continue;
+      const b64 = data ? data.toBase64String() : "";
+      if (b64.startsWith("JVBERi")) return { url, b64 };
+    } catch (e) {}
+  }
+  if (!answered) throw new Error(`couldn't reach ${GSE[k].name}`);
+  return null;
+}
+async function readGse(g, k, t) {
+  g.tried[t] = new Date().toISOString();
+  const got = await gseFile(k, t);
+  if (!got) return false;
+  const rows = parseGse(await pdfPages(got.b64, 30), t, GSE[k].lead);
+  if (!rows || !Object.keys(rows).length) throw new Error(`couldn't find the serious delinquency rate in ${GSE[k].name}'s ${monthName(t)} report`);
+  Object.keys(rows).forEach((m) => { if (!(g.src[m] > t)) { g.pts[m] = rows[m]; g.src[m] = t; } });
+  g.files[t] = got.url;
+  return true;
+}
+async function refreshGse(saved, say, keepGoing) {
+  say = say || (async () => {});
+  keepGoing = keepGoing || (() => true);
+  const s = saved ? JSON.parse(JSON.stringify(saved)) : {};
+  s.gse = s.gse || {};
+  const errs = [];
+  for (const k of Object.keys(GSE)) {
+    const g = s.gse[k] = s.gse[k] || { pts: {}, src: {}, files: {}, tried: {}, floor: null };
+    const fresh = (t) => g.tried[t] && hoursSince(g.tried[t]) < FHA_RETRY_DAYS * 24;
+    let tries = 0;
+    try {
+      // newest: last month's report comes out three to five weeks after the month ends
+      const files = Object.keys(g.files).map(Number), newest = files.length ? Math.max(...files) : -1;
+      if (!g.checked || hoursSince(g.checked) >= CHECK_HOURS) {
+        for (let t = nowMonth() - 1; t > newest && t >= nowMonth() - 4 && keepGoing(); t--) {
+          await say(`Looking for ${GSE[k].name}'s ${monthName(t)} report...`);
+          tries++;
+          if (await readGse(g, k, t)) break;
+        }
+        g.checked = new Date().toISOString();
+      }
+      // back to 2015: one report covers 13 months, so step back a year at a time
+      if (g.floor != null && hoursSince(g.floorAt) > 180 * 24) g.floor = null; // look further back again twice a year
+      for (let loop = 0; loop < 12 && tries < GSE_TRIES_PER_OPEN && keepGoing(); loop++) {
+        const have = Object.keys(g.pts).map(Number);
+        const oldest = have.length ? Math.min(...have) : nowMonth();
+        if (oldest <= FHA_FROM || (g.floor != null && oldest - 1 <= g.floor)) break;
+        let found = false, triedAny = false;
+        for (let t = oldest - 1; t >= oldest - 3 && tries < GSE_TRIES_PER_OPEN; t--) {
+          if (g.files[t] || fresh(t)) continue;
+          await say(`Reading ${GSE[k].name}'s reports back to ${Math.floor(FHA_FROM / 12)}: ${monthName(t)}...`);
+          tries++; triedAny = true;
+          if (await readGse(g, k, t)) { found = true; break; }
+        }
+        if (found) continue;
+        if (triedAny) { g.floor = oldest - 1; g.floorAt = new Date().toISOString(); } // nothing older on their site under these names
+        break;
+      }
+      g.err = null;
+    } catch (e) { g.err = String(e.message || e); errs.push(`${GSE[k].name}: ${g.err}`); }
+  }
+  s.gseErrors = errs.length ? errs : null;
+  writeJSON(FILE, s);
+  return s;
+}
+
 function drawText(ctx, str, rect, font, hex, align) {
   ctx.setFont(font); ctx.setTextColor(new Color(hex));
   if (align === "right") ctx.setTextAlignedRight(); else if (align === "center") ctx.setTextAlignedCenter(); else ctx.setTextAlignedLeft();
@@ -876,6 +998,12 @@ function bcSchedule(s) {
   const w = lastT(s.sce && s.sce.waves);
   if (w != null) { const rel = w + 5; rows.push(schedEst("NY Fed credit access survey", schedMonName(mi(w)) + " wave", [schedDay(Math.floor(rel / 12), rel % 12, 1), schedDay(Math.floor((rel + 1) / 12), (rel + 1) % 12, 20)], "every 4 months (Feb, Jun, Oct waves)", { checked: s.sceChecked, err: (s.errors || []).filter((e) => /Credit Access/.test(e)).join("; "), cadence: "checks weekly" })); }
   const ft = s.fha && s.fha.pts ? Math.max(...Object.keys(s.fha.pts).map(Number)) : null;
+  ["fnm", "fre"].forEach((k) => {
+    const g = s.gse && s.gse[k], ts = g ? Object.keys(g.pts || {}).map(Number) : [];
+    if (!ts.length) return;
+    const lt = Math.max(...ts), nm = lt + 1, end = schedIso(new Date(Date.UTC(Math.floor(nm / 12), (nm % 12) + 1, 0)));
+    rows.push(schedEst(`${GSE[k].name} delinquency`, schedMonName(mi(lt)), [schedPlus(end, 18), schedPlus(end, 32)], "monthly report, about 3-4 weeks after month-end", { checked: g.checked, err: g.err || "", cadence: "checks daily" }));
+  });
   if (ft != null && isFinite(ft)) { const nm = ft + 1, end = new Date(Date.UTC(Math.floor(nm / 12), (nm % 12) + 1, 0)); const e0 = schedIso(end); rows.push(schedEst("HUD FHA loan performance", schedMonName(mi(ft)), [schedPlus(e0, 40), schedPlus(e0, 65)], "monthly, about 6-9 weeks after month-end", { checked: s.fha && s.fha.checked, err: (s.fhaErrors || []).join("; "), cadence: "checks daily" })); }
   return rows;
 }
@@ -1371,8 +1499,8 @@ var CH = [
     ds: "NY Fed Survey of Consumer Expectations, Credit Access (Feb, Jun, Oct): share of applicants rejected, and share of people who didn't apply because they expected a no.",
     lines: [["mrej", "Mortgage", "#FF9F0A"], ["rrej", "Refi", "#BF5AF2"], ["rej", "Any credit", "#64A8FF"], ["disc", "Discouraged", "#98989F", 2]] },
   { id: "fha", kind: "lines", h: 200, title: "FHA delinquency", fmt: "pct1",
-    ds: "Share of active FHA single-family loans, seasonally adjusted (HUD, monthly). Serious: 90+ days late, in foreclosure or in bankruptcy. 30-day and 60-day: earlier stages.",
-    lines: [["sdq", "Serious", "#FF453A"], ["d30", "30-day", "#FFD60A"], ["d60", "60-day", "#FF9F0A"]] },
+    ds: "Share of active FHA single-family loans, seasonally adjusted (HUD, monthly). Serious: 90+ days late, in foreclosure or in bankruptcy. 30-day and 60-day: earlier stages. For comparison, conventional loans: Fannie Mae's and Freddie Mac's single-family serious delinquency (90+ days late or in foreclosure; not seasonally adjusted, and bankruptcies aren't counted separately), from their monthly reports.",
+    lines: [["sdq", "FHA serious", "#FF453A"], ["d30", "FHA 30-day", "#FFD60A"], ["d60", "FHA 60-day", "#FF9F0A"], ["fnm", "Fannie Mae (conv.)", "#64D2FF"], ["fre", "Freddie Mac (conv.)", "#30D158"]] },
 ];
 // on screen, FHA sits right under "Going seriously delinquent"
 var ORDER = [0, 5, 1, 4], FHA_MSG = "";
@@ -1381,6 +1509,7 @@ function series(ci, k) {
   if (c.id === "del") return (D.del && D.del[k]) || [];
   if (c.id === "late") return D[k] || [];
   if (c.id === "med") return (D.med || []).map(function (p) { return { t: p.t, v: k === "med" ? p.v : p[k] }; }).filter(function (p) { return p.v != null; });
+  if (c.id === "fha" && (k === "fnm" || k === "fre")) return (D.gse && D.gse[k]) || [];
   if (c.id === "fha") return (D.fha || []).filter(function (p) { return p[k] != null; }).map(function (p) { return { t: p.t, v: p[k] }; });
   if (c.id === "rej") return (D.waves || []).filter(function (p) { return p[k] != null; }).map(function (p) { return { t: p.t, v: p[k] }; });
   return [];
@@ -1477,7 +1606,7 @@ function drawLines0(ci) {
   on.slice().reverse().forEach(function (ln) {
     var pts = series(ci, ln[0]), d = "";
     pts.forEach(function (p, k) { d += (k ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); });
-    var bold = ln[0] === "mortgage" || ln[0] === "mrej" || ln[0] === "med" || ln[0] === "sdq" || c.id === "late";
+    var bold = ln[0] === "mortgage" || ln[0] === "mrej" || ln[0] === "med" || ln[0] === "sdq" || ln[0] === "fnm" || ln[0] === "fre" || c.id === "late";
     s += '<path d="' + d + '" clip-path="url(#cp' + ci + ')" fill="none" stroke="' + ln[2] + '" stroke-width="' + (bold ? 2.6 : 1.7) + '"' + (ln[3] === 2 ? ' stroke-dasharray="4 3"' : "") + ' stroke-opacity="' + (bold || c.id === "rej" ? 1 : 0.75) + '" stroke-linejoin="round"/>';
     if (c.dots) pts.forEach(function (p) { if (p.t >= HV.a && p.t <= HV.b) s += '<circle cx="' + X(p.t).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="2.3" fill="' + ln[2] + '"/>'; });
     var r = readAt(ci, pts);
@@ -1924,8 +2053,11 @@ window.printPdf = function (jsPDF, fonts) {
   // ---- FHA ----
   if (hasFha) {
     doc.addPage([W, H], "landscape");
-    headline("FHA Delinquency");
-    lineChart(5, L1, W - 36, T0, B0, "FHA Loans Past Due", "% of active FHA single-family loans, seasonally adjusted");
+    // the headline: FHA's serious rate against the conventional (GSE) rate
+    var fl = series(5, "sdq"), gl = ["fnm", "fre"].map(function (k) { var x = series(5, k); return x.length ? x[x.length - 1].v : null; }).filter(function (v) { return v != null; });
+    var fv = fl.length ? fl[fl.length - 1].v : null, gv = gl.length ? gl.reduce(function (a, b) { return a + b; }, 0) / gl.length : null;
+    headlineFit(fv != null && gv ? "FHA Serious Delinquency at " + fv.toFixed(1) + "%, About " + (fv / gv).toFixed(0) + "x Conventional Loans' " + gv.toFixed(1) + "% (Fannie and Freddie)" : fv != null ? "FHA Serious Delinquency at " + fv.toFixed(1) + "%" : "FHA Delinquency");
+    lineChart(5, L1, W - 36, T0, B0, "FHA Loans Past Due, With Conventional Loans for Comparison", "% of loans; FHA seasonally adjusted (HUD); Fannie Mae and Freddie Mac serious delinquency, not adjusted");
     caption(CH[5].ds, L1, W - 72, H - 44 - 40);
     var fs = series(5, "sdq").filter(function (p) { return p.t >= HV.a && p.t <= HV.b; });
     banner(++PG, fs.length ? mName(fs[0].t) + " to " + mName(fs[fs.length - 1].t) : null);
@@ -1967,13 +2099,14 @@ window.printPdf = function (jsPDF, fonts) {
   var HU = D.hud || {};
   if (HU.t3 && HU.t3.score) {
     doc.addPage([W, H], "landscape");
-    var p2 = HP.panel !== "score" && HU.t3[HP.panel] ? HP.panel : HU.t3.dpa ? "dpa" : null;
-    var hA = panelPhrase("score", t3Line("score", HU.t3.score)), hB = p2 ? panelPhrase(p2, t3Line(p2, HU.t3[p2])) : null;
+    var hA = panelPhrase("score", t3Line("score", HU.t3.score)), hB = HU.t3.dpa ? panelPhrase("dpa", t3Line("dpa", HU.t3.dpa)) : null;
     var dy = headlineFit([hA, hB].filter(Boolean).join("; ") || "FHA Serious Delinquency by Borrower and Loan");
-    var cap = "Serious delinquency: 90+ days late, in foreclosure or in bankruptcy, % of active FHA loans in each group (HUD " + (HU.t3At || "") + ", Table 3). Dashed outlines: the same group a year earlier (" + (HU.t3AgoAt || "n/a") + "). Dashed line: all loans in the panel.";
+    var cap = "Serious delinquency: 90+ days late, in foreclosure or in bankruptcy, % of active FHA loans in each group (HUD " + (HU.t3At || "") + ", Table 3). Dashed outlines: the same group a year earlier (" + (HU.t3AgoAt || "n/a") + "). Dashed line: all loans in the panel. First-time vs repeat covers purchase loans only.";
     titles(L1, half, "By Credit Score", "Serious delinquency, % of loans · streamline refis have no score", T0 - 48 + dy);
     whoBars("score", L1, L1 + half, T0 + dy, B0);
-    if (p2) { titles(L2, half, "By " + PANELS.filter(function (p) { return p[0] === p2; })[0][1], "Serious delinquency, % of loans", T0 - 48 + dy); whoBars(p2, L2, L2 + half, T0 + dy, B0); }
+    var midY = T0 + dy + (HU.t3.firstTime ? 92 : 0);
+    if (HU.t3.firstTime) { titles(L2, half, "First-Time vs Repeat Buyers", "Purchase loans, serious delinquency %", T0 - 48 + dy); whoBars("firstTime", L2, L2 + half, T0 + dy, T0 + dy + 50); }
+    if (HU.t3.dpa) { if (HU.t3.firstTime) titles(L2, half, "By Down Payment Assistance", "Serious delinquency, % of loans", midY - 36); else titles(L2, half, "By Down Payment Assistance", "Serious delinquency, % of loans", T0 - 48 + dy); whoBars("dpa", L2, L2 + half, HU.t3.firstTime ? midY + 12 : T0 + dy, B0); }
     caption(cap, L1, W - 72, H - 44 - 28);
     banner(++PG, "HUD " + (HU.t3At || ""));
   }
@@ -1986,7 +2119,9 @@ window.printPdf = function (jsPDF, fonts) {
     for (var v = 0; v <= hin + 1e-9; v += stn) { var yy = Bq - v / hin * (Bq - Tq); doc.setDrawColor(RULE[0], RULE[1], RULE[2]); doc.setLineWidth(0.5); doc.line(Lq, yy, Rq, yy); font(false, 8, GRY); doc.text(v >= 1000 ? Math.round(v / 1000) + "K" : String(v), Lq - 5, yy + 3, { align: "right" }); }
     var bq = (Rq - Lq) / Q.length, rc = pc("#FF453A");
     Q.forEach(function (r, k) { var x = Lq + k * bq, y = Bq - nOf(r) / hin * (Bq - Tq); doc.setFillColor(rc[0], rc[1], rc[2]); doc.rect(x + bq * 0.15, y, bq * 0.7, Bq - y, "F"); if (r.q === 1) { font(false, 8, GRY); doc.text("FY" + String(r.fy).slice(2), x + bq / 2, Bq + 11, { align: "center" }); } });
+    var hidN = REASONS.filter(function (rr, j) { return HP.rOff[j]; }).map(function (rr) { return rr[0]; });
     titles(L2, half, "Share by Reason", (anyOff() ? "% of the reasons shown" : "% of new 90+ day delinquencies") + "; the current quarter month by month", T0 - 48 + dy2);
+    if (hidN.length) { font(true, 8.5, pc("#FF9F0A")); doc.text(doc.splitTextToSize(clean("Showing " + (8 - hidN.length) + " of 8 reasons; hidden: " + hidN.join(", ")), W - 72).slice(0, 2), L1, T0 - 48 + dy2 + 4); }
     var Ls = L2 + 30, Rs = L2 + half - 4, bs = (Rs - Ls) / all.length;
     [0, 25, 50, 75, 100].forEach(function (v) { var yy = Bq - v / 100 * (Bq - Tq); doc.setDrawColor(RULE[0], RULE[1], RULE[2]); doc.setLineWidth(0.5); doc.line(Ls, yy, Rs, yy); font(false, 8, GRY); doc.text(v + "%", Ls - 5, yy + 3, { align: "right" }); });
     all.forEach(function (r, k) {
@@ -1996,7 +2131,7 @@ window.printPdf = function (jsPDF, fonts) {
       if (r.mon != null && (k === all.length - 1 || all[k + 1].mon == null)) { font(false, 8, GRY); doc.text(MON[r.mon], x + bs / 2, Bq + 11, { align: "center" }); }
     });
     var lx = L1, ly = Bq + 26, last = all[all.length - 1];
-    REASONS.forEach(function (rr, j) { if (HP.rOff[j]) return; var c = pc(rr[1]), t = rr[0] + " " + shOf(last, j).toFixed(1) + "%"; font(false, 8, INK); var tw = doc.getTextWidth(t) + 22; if (lx + tw > W - 36) { lx = L1; ly += 11; } doc.setFillColor(c[0], c[1], c[2]); doc.rect(lx, ly - 6.5, 7, 7, "F"); doc.text(t, lx + 10, ly); lx += tw; });
+    REASONS.forEach(function (rr, j) { var off = HP.rOff[j], c = off ? [190, 190, 195] : pc(rr[1]), t = rr[0] + (off ? " (hidden)" : " " + shOf(last, j).toFixed(1) + "%"); font(false, 8, INK); var tw = doc.getTextWidth(t) + 22; if (lx + tw > W - 36) { lx = L1; ly += 11; } doc.setFillColor(c[0], c[1], c[2]); doc.rect(lx, ly - 6.5, 7, 7, "F"); doc.text(t, lx + 10, ly); lx += tw; });
     banner(++PG, "HUD " + (HU.t2At || ""));
   }
   if (HU.fig && HU.fig.length) {
@@ -2048,10 +2183,12 @@ function payload(s) {
   const found = sce.found || [];
   const fp = (s.fha && s.fha.pts) || {};
   const fha = Object.keys(fp).map(Number).sort((a, b) => a - b).filter((t) => fp[t].s).map((t) => ({ t, d30: fp[t].s[0], d60: fp[t].s[1], sdq: fp[t].s[2] }));
-  const errs = [].concat(s.errors || [], s.fhaErrors || []);
+  const errs = [].concat(s.errors || [], s.fhaErrors || [], s.gseErrors || []);
+  const gs = (k) => { const p = (s.gse && s.gse[k] && s.gse[k].pts) || {}; return Object.keys(p).map(Number).sort((a, b) => a - b).map((t) => ({ t, v: p[t] })); };
   return {
     fha, fhaAsOf: fha.length ? mn(fha[fha.length - 1].t) : null,
     hud: hudPayload(s.fha, mn),
+    gse: { fnm: gs("fnm"), fre: gs("fre") },
     sched: bcSchedule(s),
     fhaPdf: s.fha && Object.keys(s.fha.files || {}).length ? mn(Math.max(...Object.keys(s.fha.files).map(Number))) : null,
     del: hh.del || null, cure: hh.cure || [], roll: hh.roll || [], orig: hh.orig || [], med: hh.med || [], brk: hh.brk || null,
@@ -2102,8 +2239,12 @@ async function openFullScreen(saved) {
       const sayF = async (t) => { try { if (isOpen()) await wv.evaluateJavaScript(`window.setFhaStatus(${JSON.stringify(t)});0`); } catch (e) {} };
       const withFha = await refreshFha(fresh, sayF, isOpen);
       latest = withFha;
-      await sayF("");
       if (isOpen() && (withFha.hh || withFha.sce || withFha.fha)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(withFha))});0`);
+      // then Fannie and Freddie for the conventional comparison
+      const withGse = await refreshGse(withFha, sayF, isOpen);
+      latest = withGse;
+      await sayF("");
+      if (isOpen() && (withGse.hh || withGse.sce || withGse.fha)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(withGse))});0`);
     } catch (e) {
       try { await wv.evaluateJavaScript(`document.getElementById("errs").textContent = ${JSON.stringify("Couldn't load the data: " + (e.message || e))};0`); } catch (e2) {}
     }
