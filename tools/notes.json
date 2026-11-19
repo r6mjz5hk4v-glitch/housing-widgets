@@ -314,6 +314,10 @@
  "BorrowerCreditWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "Hiding a reason under FHA \"Share by reason\" now re-scales the reasons left to 100%, and the new-delinquencies count above shows only their loans. The sentence and the PDF follow."
+  },
+  {
+   "d": "2026-11-19",
    "t": "Tap a reason under FHA \"Share by reason\" to hide or show it (the PDF follows). The \"Who's getting mortgages\" and credit score charts, and their PDF slide, are gone."
   },
   {

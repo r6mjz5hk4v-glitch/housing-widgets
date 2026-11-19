@@ -395,8 +395,12 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "bd57347",
+   "hash": "17b02e3d",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "Hiding a reason under FHA \"Share by reason\" now re-scales the reasons left to 100%, and the new-delinquencies count above shows only their loans. The sentence and the PDF follow."
+    },
     {
      "d": "2026-11-19",
      "t": "Tap a reason under FHA \"Share by reason\" to hide or show it (the PDF follows). The \"Who's getting mortgages\" and credit score charts, and their PDF slide, are gone."
@@ -404,10 +408,6 @@
     {
      "d": "2026-11-18",
      "t": "Three new FHA sections from HUD's monthly report: who's falling behind (serious delinquency by credit score, down payment help, first-time buyers, vintage and more, vs a year ago), why borrowers fall behind, and failure rates by loan vintage. Each gets its own slide in Share as PDF. The first open after updating reads HUD's newest report again, so give it an extra minute."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },

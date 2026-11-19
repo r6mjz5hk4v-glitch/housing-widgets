@@ -1696,18 +1696,24 @@ function drawWho(H) {
 // fiscal quarter label, and the order of Table 2's rows
 function t2Name(r, short) { return r.mon != null ? MON[r.mon] + (short ? "" : " " + (r.mon >= 9 ? r.fy - 1 : r.fy)) : (short ? "Q" + r.q + " '" + String(r.fy).slice(2) : "FY" + r.fy + " Q" + r.q); }
 // ---- why: new 90+ day delinquencies per quarter, and the share by reason
+// Hidden reasons drop out of both charts: the shares of the reasons left add to 100%,
+// and the count is only the loans for the reasons left.
+function visSum(r) { var t = 0; r.sh.forEach(function (v, j) { if (!HP.rOff[j]) t += v; }); return t; }
+function shOf(r, j) { var t = visSum(r); return t > 0 ? r.sh[j] / t * 100 : 0; }
+function nOf(r) { var t = r.sh.reduce(function (a, b) { return a + b; }, 0) || 100; return Math.round(r.n * visSum(r) / t); }
+function anyOff() { for (var j = 0; j < 8; j++) if (HP.rOff[j]) return true; return false; }
 function drawWhy(H) {
   var nS = el("hwn"), sS = el("hws"); if (!nS) return;
   var rows = H.t2 || [];
   if (!rows.length) { nS.innerHTML = '<text x="0" y="24" fill="#8E8E93" font-size="12">Not loaded yet</text>'; sS.innerHTML = ""; el("hwg").innerHTML = ""; el("hwl").textContent = ""; el("hwv").textContent = ""; return; }
   var q = rows.filter(function (r) { return r.mon == null; }), w = nS.clientWidth || 360, L = 36, R = w - 8;
   // quarters
-  var mx = Math.max.apply(null, q.map(function (r) { return r.n; })), st = nice(mx, 3), hi = Math.ceil(mx / st) * st, h1 = 110, B1 = h1 - 18;
+  var mx = Math.max(1, Math.max.apply(null, q.map(nOf))), st = nice(mx, 3), hi = Math.ceil(mx / st) * st, h1 = 110, B1 = h1 - 18;
   var bw = (R - L) / Math.max(1, q.length), s = "";
-  for (var v = 0; v <= hi + 1e-9; v += st) s += '<line x1="' + L + '" x2="' + R + '" y1="' + (B1 - v / hi * (B1 - 6)).toFixed(1) + '" y2="' + (B1 - v / hi * (B1 - 6)).toFixed(1) + '" stroke="#3A3A3C" stroke-width="0.6"/><text x="' + (L - 4) + '" y="' + (B1 - v / hi * (B1 - 6) + 3.5).toFixed(1) + '" font-size="10" fill="#8E8E93" text-anchor="end">' + (v / 1000) + "K</text>";
+  for (var v = 0; v <= hi + 1e-9; v += st) s += '<line x1="' + L + '" x2="' + R + '" y1="' + (B1 - v / hi * (B1 - 6)).toFixed(1) + '" y2="' + (B1 - v / hi * (B1 - 6)).toFixed(1) + '" stroke="#3A3A3C" stroke-width="0.6"/><text x="' + (L - 4) + '" y="' + (B1 - v / hi * (B1 - 6) + 3.5).toFixed(1) + '" font-size="10" fill="#8E8E93" text-anchor="end">' + (v >= 1000 ? Math.round(v / 1000) + "K" : v) + "</text>";
   var sel = HP.t2cur != null && rows[HP.t2cur] ? rows[HP.t2cur] : rows[rows.length - 1];
   q.forEach(function (r, k) {
-    var x = L + k * bw, y = B1 - r.n / hi * (B1 - 6);
+    var x = L + k * bw, y = B1 - nOf(r) / hi * (B1 - 6);
     s += '<rect x="' + (x + bw * 0.15).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (bw * 0.7).toFixed(1) + '" height="' + (B1 - y).toFixed(1) + '" fill="#FF453A" fill-opacity="' + (sel === r ? 1 : 0.6) + '"/>';
     if (r.q === 1) s += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (h1 - 4) + '" font-size="9.5" fill="#8E8E93" text-anchor="middle">FY' + String(r.fy).slice(2) + "</text>";
   });
@@ -1716,29 +1722,31 @@ function drawWhy(H) {
   var h2 = 190, B2 = h2 - 18, bw2 = (R - L) / rows.length, s2 = "";
   [0, 25, 50, 75, 100].forEach(function (v) { var y = B2 - v / 100 * (B2 - 6); s2 += '<line x1="' + L + '" x2="' + R + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#3A3A3C" stroke-width="0.6"/><text x="' + (L - 4) + '" y="' + (y + 3.5).toFixed(1) + '" font-size="10" fill="#8E8E93" text-anchor="end">' + v + "%</text>"; });
   rows.forEach(function (r, k) {
-    var x = L + k * bw2, acc = 0, tot = r.sh.reduce(function (a, b) { return a + b; }, 0) || 100;
+    var x = L + k * bw2, acc = 0, tot = visSum(r) || 100;
     r.sh.forEach(function (v, j) { if (HP.rOff[j]) return; var a = acc / tot * 100, b = (acc + v) / tot * 100; s2 += '<rect x="' + (x + bw2 * 0.1).toFixed(1) + '" y="' + (B2 - b / 100 * (B2 - 6)).toFixed(1) + '" width="' + (bw2 * 0.8).toFixed(1) + '" height="' + ((b - a) / 100 * (B2 - 6)).toFixed(1) + '" fill="' + REASONS[j][1] + '" fill-opacity="' + (sel === r ? 1 : 0.7) + '"/>'; acc += v; });
     if (r.mon == null && r.q === 1) s2 += '<text x="' + (x + bw2 / 2).toFixed(1) + '" y="' + (h2 - 4) + '" font-size="9.5" fill="#8E8E93" text-anchor="middle">FY' + String(r.fy).slice(2) + "</text>";
     if (r.mon != null && (k === rows.length - 1 || rows[k + 1].mon == null)) s2 += '<text x="' + (x + bw2 / 2).toFixed(1) + '" y="' + (h2 - 4) + '" font-size="9.5" fill="#8E8E93" text-anchor="middle">' + MON[r.mon] + "</text>";
   });
   if (sel) { var xs = L + rows.indexOf(sel) * bw2; s2 += '<rect x="' + (xs + bw2 * 0.05).toFixed(1) + '" y="5" width="' + (bw2 * 0.9).toFixed(1) + '" height="' + (B2 - 5) + '" fill="none" stroke="#FFFFFF" stroke-width="1.2"/>'; }
   sS.setAttribute("viewBox", "0 0 " + w + " " + h2); sS.innerHTML = s2; sS.__g = { L: L, bw: bw2, rows: rows };
-  el("hwg").innerHTML = REASONS.map(function (rr, j) { return '<span class="chip hreason' + (HP.rOff[j] ? " off" : "") + '" data-r="' + j + '" style="color:' + rr[1] + '">&#9679; ' + esc(rr[0]) + " " + sel.sh[j].toFixed(1) + "%</span>"; }).join("");
-  el("hwv").innerHTML = sel.n.toLocaleString("en-US") + ' new<br><span style="color:#8E8E93;font-size:11px;font-weight:600">' + esc(t2Name(sel)) + (sel.mon != null ? " (one month)" : "") + "</span>";
+  el("hwg").innerHTML = REASONS.map(function (rr, j) { return '<span class="chip hreason' + (HP.rOff[j] ? " off" : "") + '" data-r="' + j + '" style="color:' + rr[1] + '">&#9679; ' + esc(rr[0]) + (HP.rOff[j] ? "" : " " + shOf(sel, j).toFixed(1) + "%") + "</span>"; }).join("");
+  el("hwv").innerHTML = nOf(sel).toLocaleString("en-US") + ' new<br><span style="color:#8E8E93;font-size:11px;font-weight:600">' + esc(t2Name(sel)) + (sel.mon != null ? " (one month)" : "") + (anyOff() ? " · reasons shown" : "") + "</span>";
   el("hwl").textContent = whyLine(rows) || "";
-  el("hwd").textContent = "Loans newly 90+ days late each fiscal quarter (the fiscal year starts in October), and the reason servicers reported, from HUD's " + (H.t2At || "") + " report (Table 2). The current quarter shows month by month. National emergency includes the COVID-19 pandemic; Other includes property problems, job transfers, business failure, payment disputes and more. Tap a bar to read it; tap a reason to hide or show it (the bars keep their 0-100% scale, so each reason's share stays true).";
+  el("hwd").textContent = "Loans newly 90+ days late each fiscal quarter (the fiscal year starts in October), and the reason servicers reported, from HUD's " + (H.t2At || "") + " report (Table 2). The current quarter shows month by month. National emergency includes the COVID-19 pandemic; Other includes property problems, job transfers, business failure, payment disputes and more. Tap a bar to read it; tap a reason to hide or show it: the shares re-scale to the reasons left, and the count above shows only their loans." + (anyOff() ? " Showing " + REASONS.filter(function (rr, j) { return !HP.rOff[j]; }).length + " of 8 reasons." : "");
 }
 // the top reason now, and the biggest move in a year (latest full quarter vs four quarters earlier)
 function whyLine(rows) {
   var q = rows.filter(function (r) { return r.mon == null; }), last = rows[rows.length - 1];
   if (!last) return null;
   // "national emergency" (mostly COVID) and "other" aren't reasons anyone acts on: left out of the sentence
-  var top = 0; last.sh.forEach(function (v, j) { if (j < 6 && v > last.sh[top]) top = j; });
-  var out = REASONS[top][0] + " leads at " + last.sh[top].toFixed(1) + "% of new 90+ delinquencies (" + t2Name(last) + ")";
+  var ok = function (j) { return !HP.rOff[j] && (j < 6 || (HP.rOff[0] && HP.rOff[1] && HP.rOff[2] && HP.rOff[3] && HP.rOff[4] && HP.rOff[5])); };
+  var top = -1; for (var j0 = 0; j0 < 8; j0++) if (ok(j0) && (top < 0 || shOf(last, j0) > shOf(last, top))) top = j0;
+  if (top < 0) return null;
+  var out = REASONS[top][0] + " leads at " + shOf(last, top).toFixed(1) + "% of new 90+ delinquencies" + (anyOff() ? " among the reasons shown" : "") + " (" + t2Name(last) + ")";
   if (q.length >= 5) {
-    var a = q[q.length - 1], b = q[q.length - 5], big = 0;
-    for (var j = 0; j < 6; j++) if (Math.abs(a.sh[j] - b.sh[j]) > Math.abs(a.sh[big] - b.sh[big])) big = j;
-    var d = a.sh[big] - b.sh[big];
+    var a = q[q.length - 1], b = q[q.length - 5], big = -1;
+    for (var j = 0; j < 8; j++) if (ok(j) && (big < 0 || Math.abs(shOf(a, j) - shOf(b, j)) > Math.abs(shOf(a, big) - shOf(b, big)))) big = j;
+    var d = big < 0 ? 0 : shOf(a, big) - shOf(b, big);
     if (Math.abs(d) >= 1) out += "; " + REASONS[big][0].toLowerCase() + " " + (d > 0 ? "up " : "down ") + Math.abs(d).toFixed(1) + " pts from " + t2Name(b);
   }
   return out;
@@ -1973,22 +1981,22 @@ window.printPdf = function (jsPDF, fonts) {
     doc.addPage([W, H], "landscape");
     var dy2 = headlineFit(whyLine(HU.t2) ? titleCase(whyLine(HU.t2)).split("Pts").join("Points") : "Why FHA Borrowers Fall Behind");
     var Q = HU.t2.filter(function (r) { return r.mon == null; }), all = HU.t2;
-    titles(L1, half, "New 90+ Day Delinquencies", "Loans per fiscal quarter (fiscal years start in October)", T0 - 48 + dy2);
-    var mxn = Math.max.apply(null, Q.map(function (r) { return r.n; })), stn = nice(mxn, 4), hin = Math.ceil(mxn / stn) * stn, Lq = L1 + 34, Rq = L1 + half, Tq = T0 + dy2, Bq = B0;
-    for (var v = 0; v <= hin + 1e-9; v += stn) { var yy = Bq - v / hin * (Bq - Tq); doc.setDrawColor(RULE[0], RULE[1], RULE[2]); doc.setLineWidth(0.5); doc.line(Lq, yy, Rq, yy); font(false, 8, GRY); doc.text(Math.round(v / 1000) + "K", Lq - 5, yy + 3, { align: "right" }); }
+    titles(L1, half, "New 90+ Day Delinquencies", "Loans per fiscal quarter" + (anyOff() ? ", for the reasons shown" : "") + " (fiscal years start in October)", T0 - 48 + dy2);
+    var mxn = Math.max(1, Math.max.apply(null, Q.map(nOf))), stn = nice(mxn, 4), hin = Math.ceil(mxn / stn) * stn, Lq = L1 + 34, Rq = L1 + half, Tq = T0 + dy2, Bq = B0;
+    for (var v = 0; v <= hin + 1e-9; v += stn) { var yy = Bq - v / hin * (Bq - Tq); doc.setDrawColor(RULE[0], RULE[1], RULE[2]); doc.setLineWidth(0.5); doc.line(Lq, yy, Rq, yy); font(false, 8, GRY); doc.text(v >= 1000 ? Math.round(v / 1000) + "K" : String(v), Lq - 5, yy + 3, { align: "right" }); }
     var bq = (Rq - Lq) / Q.length, rc = pc("#FF453A");
-    Q.forEach(function (r, k) { var x = Lq + k * bq, y = Bq - r.n / hin * (Bq - Tq); doc.setFillColor(rc[0], rc[1], rc[2]); doc.rect(x + bq * 0.15, y, bq * 0.7, Bq - y, "F"); if (r.q === 1) { font(false, 8, GRY); doc.text("FY" + String(r.fy).slice(2), x + bq / 2, Bq + 11, { align: "center" }); } });
-    titles(L2, half, "Share by Reason", "% of new 90+ day delinquencies; the current quarter month by month", T0 - 48 + dy2);
+    Q.forEach(function (r, k) { var x = Lq + k * bq, y = Bq - nOf(r) / hin * (Bq - Tq); doc.setFillColor(rc[0], rc[1], rc[2]); doc.rect(x + bq * 0.15, y, bq * 0.7, Bq - y, "F"); if (r.q === 1) { font(false, 8, GRY); doc.text("FY" + String(r.fy).slice(2), x + bq / 2, Bq + 11, { align: "center" }); } });
+    titles(L2, half, "Share by Reason", (anyOff() ? "% of the reasons shown" : "% of new 90+ day delinquencies") + "; the current quarter month by month", T0 - 48 + dy2);
     var Ls = L2 + 30, Rs = L2 + half - 4, bs = (Rs - Ls) / all.length;
     [0, 25, 50, 75, 100].forEach(function (v) { var yy = Bq - v / 100 * (Bq - Tq); doc.setDrawColor(RULE[0], RULE[1], RULE[2]); doc.setLineWidth(0.5); doc.line(Ls, yy, Rs, yy); font(false, 8, GRY); doc.text(v + "%", Ls - 5, yy + 3, { align: "right" }); });
     all.forEach(function (r, k) {
-      var x = Ls + k * bs, acc = 0, tot = r.sh.reduce(function (a, b) { return a + b; }, 0) || 100;
+      var x = Ls + k * bs, acc = 0, tot = visSum(r) || 100;
       r.sh.forEach(function (v, j) { if (HP.rOff[j]) return; var c = pc(REASONS[j][1]), a = acc / tot * 100, b2 = (acc + v) / tot * 100; doc.setFillColor(c[0], c[1], c[2]); doc.rect(x + bs * 0.1, Bq - b2 / 100 * (Bq - Tq), bs * 0.8, (b2 - a) / 100 * (Bq - Tq), "F"); acc += v; });
       if (r.mon == null && r.q === 1) { font(false, 8, GRY); doc.text("FY" + String(r.fy).slice(2), x + bs / 2, Bq + 11, { align: "center" }); }
       if (r.mon != null && (k === all.length - 1 || all[k + 1].mon == null)) { font(false, 8, GRY); doc.text(MON[r.mon], x + bs / 2, Bq + 11, { align: "center" }); }
     });
     var lx = L1, ly = Bq + 26, last = all[all.length - 1];
-    REASONS.forEach(function (rr, j) { if (HP.rOff[j]) return; var c = pc(rr[1]), t = rr[0] + " " + last.sh[j].toFixed(1) + "%"; font(false, 8, INK); var tw = doc.getTextWidth(t) + 22; if (lx + tw > W - 36) { lx = L1; ly += 11; } doc.setFillColor(c[0], c[1], c[2]); doc.rect(lx, ly - 6.5, 7, 7, "F"); doc.text(t, lx + 10, ly); lx += tw; });
+    REASONS.forEach(function (rr, j) { if (HP.rOff[j]) return; var c = pc(rr[1]), t = rr[0] + " " + shOf(last, j).toFixed(1) + "%"; font(false, 8, INK); var tw = doc.getTextWidth(t) + 22; if (lx + tw > W - 36) { lx = L1; ly += 11; } doc.setFillColor(c[0], c[1], c[2]); doc.rect(lx, ly - 6.5, 7, 7, "F"); doc.text(t, lx + 10, ly); lx += tw; });
     banner(++PG, "HUD " + (HU.t2At || ""));
   }
   if (HU.fig && HU.fig.length) {
