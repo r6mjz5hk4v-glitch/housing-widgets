@@ -15,8 +15,11 @@ function setting(key, fallback) {
 // long-run expectations and supply chains. Each points up, down or sideways
 // by a simple rule; the verdict is which way most of them point (not a forecast).
 // Home screen: the verdict and how many signals agree. Tap for the full view:
-// release schedule, the scorecard (tap a signal for its chart), inflation now vs
-// what people expect, every source under Details, and Share as PDF (two slides).
+// the Fed's calendar (FOMC meetings, minutes, Board speeches), release schedule,
+// the scorecard (tap a signal for its chart; "What people expect" shows each
+// group and the forecasts forward: economists, Fannie Mae, the market model and
+// the Fed's projections), inflation now vs what people expect, every source
+// under Details, and Share as PDF (two slides).
 
 // ---- Update check (every 6 hours; one shared request for all the Housing Widgets) ----
 // When GitHub has a newer version of this widget: a thin yellow glow around the
@@ -278,7 +281,8 @@ async function getFomc() {
   const year = vint ? +vint.slice(0, 4) : new Date().getFullYear();
   const next = proj.find((o) => +o.date.slice(0, 4) === year + 1) || proj[proj.length - 1];
   const lrv = lr.length ? +lr[lr.length - 1].value : null;
-  return { m: vint ? vint.slice(0, 7) : null, date: vint, year: next ? +next.date.slice(0, 4) : null, one: next ? +next.value : null, lr: lrv };
+  const path = proj.filter((o) => +o.date.slice(0, 4) >= year).map((o) => ({ y: +o.date.slice(0, 4), v: +o.value }));
+  return { m: vint ? vint.slice(0, 7) : null, date: vint, year: next ? +next.date.slice(0, 4) : null, one: next ? +next.value : null, lr: lrv, path };
 }
 // University of Michigan's own table: median expected price change, next year and next 5 years.
 // FRED's copy (MICH) is a month behind and has no 5-year, so it's only the fallback.
@@ -408,7 +412,10 @@ async function getSpf() {
   const one = (t) => { const o = {}; for (const [k, v] of Object.entries(t)) o[k] = v[0]; return o; };
   const cpi10 = one(quarterly(book.sheets.CPI10, ["CPI10"])), pce10 = one(quarterly(book.sheets.PCE10, ["PCE10"]));
   if (!Object.keys(cpi).length && !Object.keys(cpi10).length) throw new Error("Philadelphia Fed file layout changed");
-  return { cpi, pce, cpi10, pce10 };
+  // the newest survey's quarter-by-quarter CPI forecasts (annualized): last quarter, this quarter, the next four
+  const raw = quarterly(book.sheets.CPI, ["CPI1", "CPI2", "CPI3", "CPI4", "CPI5", "CPI6"]), lastK = Object.keys(raw).sort().pop();
+  const path = lastK ? { y: +lastK.slice(0, 4), q: Math.floor((+lastK.slice(5, 7) - 1) / 3) + 1, v: raw[lastK] } : null;
+  return { cpi, pce, cpi10, pce10, path };
 }
 
 // ---------- Inflation pressures: wages, energy, the pipeline, shelter ----------
@@ -520,6 +527,249 @@ function pressHeadline(tr) {
   return `Pressures ${mood}: ${c} cooling, ${h} heating up, ${ok.length - c - h} steady vs 6 months ago`;
 }
 
+// ---------- Forecasts, forward from today ----------
+// Fannie Mae's monthly Economic Forecast (PDF): CPI, quarter vs the same quarter a year
+// earlier, for this year and the next two. Read with pdf.js in a hidden page, in the app only.
+const PDFJS = [
+  ["https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js", "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"],
+  ["https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js", "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js"],
+];
+let PDF_WV = null;
+async function pdfLines(b64, maxPages) {
+  if (!PDF_WV) {
+    for (const [lib, worker] of PDFJS) {
+      const wv = new WebView();
+      await wv.loadHTML(`<html><head><script src="${lib}"></script><script src="${worker}"></script></head><body></body></html>`);
+      if (await wv.evaluateJavaScript("typeof pdfjsLib !== 'undefined'")) { await wv.evaluateJavaScript(`window.__w = ${JSON.stringify(worker)}; 0`); PDF_WV = wv; break; }
+    }
+    if (!PDF_WV) throw new Error("couldn't load the PDF reader");
+  }
+  await PDF_WV.evaluateJavaScript(`window.__b64 = "${b64}"; window.__max = ${maxPages || 4}; 0`);
+  const res = JSON.parse(await PDF_WV.evaluateJavaScript(`(function () {
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = window.__w;
+      var bin = atob(window.__b64), u8 = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      window.__b64 = null;
+      pdfjsLib.getDocument({ data: u8 }).promise.then(function (doc) {
+        var pages = [], n = Math.min(doc.numPages, window.__max), done = 0;
+        for (var p = 1; p <= n; p++) (function (p) {
+          doc.getPage(p).then(function (pg) { return pg.getTextContent(); }).then(function (tc) {
+            var rows = {};
+            tc.items.forEach(function (it) { var y = Math.round(it.transform[5] / 2) * 2; (rows[y] = rows[y] || []).push([it.transform[4], it.str]); });
+            pages[p - 1] = Object.keys(rows).sort(function (a, b) { return b - a; }).map(function (y) { return rows[y].sort(function (a, b) { return a[0] - b[0]; }).map(function (c) { return c[1]; }).join(" ").replace(/ +/g, " ").trim(); }).filter(function (s) { return s; });
+            if (++done === n) { doc.destroy(); completion(JSON.stringify({ pages: pages })); }
+          }).catch(function (e) { completion(JSON.stringify({ error: "page " + p + ": " + e })); });
+        })(p);
+      }).catch(function (e) { completion(JSON.stringify({ error: String(e && e.message || e) })); });
+    } catch (e) { completion(JSON.stringify({ error: String(e && e.message || e) })); }
+  })()`, true));
+  if (res.error) throw new Error(res.error);
+  return res.pages;
+}
+// "25.1 25.2 ... 27.4 2025 2026 2027" then "Consumer Price Index 2.7 2.5 ...": quarter -> value
+function parseFannie(pages) {
+  for (const lines of pages) {
+    let head = null;
+    for (const l of lines) {
+      const q = l.match(/((?:\d{2}\.[1-4]\s+){4,}\d{2}\.[1-4])/);
+      if (q) head = q[1].trim().split(/\s+/);
+      const m = l.match(/^Consumer Price Index\s+((?:-?\d+\.\d+\s*)+)$/i);
+      if (m && head) {
+        const v = m[1].trim().split(/\s+/).map(Number), out = {};
+        head.forEach((h, i) => { if (v[i] != null && !isNaN(v[i])) { const [yy, qq] = h.split("."); out[mKey(2000 + +yy, (+qq - 1) * 3 + 1)] = v[i]; } }); // dated mid-quarter
+        if (Object.keys(out).length >= 4) return out;
+      }
+    }
+  }
+  return null;
+}
+async function getFannie() {
+  const now = new Date();
+  for (let back = 0; back <= 2; back++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - back, 1), tag = `${String(d.getMonth() + 1).padStart(2, "0")}${d.getFullYear()}`;
+    const url = `https://www.fanniemae.com/media/document/pdf/economic-forecast-${tag}`;
+    let data = null;
+    try { data = await getData([url]); } catch (e) { continue; }
+    const b64 = data.toBase64String();
+    if (!b64.startsWith("JVBERi")) continue;
+    const q = parseFannie(await pdfLines(b64, 3));
+    if (!q) throw new Error(`couldn't find the CPI row in Fannie Mae's ${MON3[d.getMonth()]} ${d.getFullYear()} forecast`);
+    return { pub: mKey(d.getFullYear(), d.getMonth()), q, url };
+  }
+  throw new Error("no Fannie Mae forecast in the last 3 months");
+}
+// The Cleveland Fed's model: expected average inflation over 1 to 5 years, as each year's own rate
+async function getClevPath() {
+  const ids = ["EXPINF1YR", "EXPINF2YR", "EXPINF3YR", "EXPINF4YR", "EXPINF5YR"];
+  const all = await Promise.all(ids.map(fredMonthly));
+  const m = Object.keys(all[0]).sort().pop();
+  const e = all.map((x) => x[m]);
+  if (!m || e.some((v) => v == null)) throw new Error("Cleveland Fed's 1-5 year series are incomplete");
+  const fwd = e.map((v, i) => (i === 0 ? v : (Math.pow(1 + v / 100, i + 1) / Math.pow(1 + e[i - 1] / 100, i) - 1) * 100));
+  return { m, fwd };
+}
+
+// The forecast lines, each a { "YYYY-MM": value } that starts at the latest actual CPI so it reads as
+// "from here". Quarterly forecasts are dated at the quarter's middle month.
+function forecasts(s) {
+  const A = s.actual || {}, cpi = lastOf(A.cpi), out = {};
+  if (!cpi) return out;
+  const start = (o) => { const r = {}; r[cpi.m] = cpi.v; Object.assign(r, o); return r; };
+  const after = (o) => { const r = {}; Object.keys(o || {}).forEach((k) => { if (k > cpi.m) r[k] = o[k]; }); return r; };
+  // economists: the Philadelphia Fed survey's quarterly CPI forecasts (annualized), compounded
+  // onto actual CPI into change from a year earlier
+  const P = s.spf && s.spf.path, ix = A.cpiIx;
+  if (P && ix) {
+    const qAvg = {}; // actual quarterly average CPI levels, by "year*4+q"
+    Object.keys(ix).forEach((k) => { const y = +k.slice(0, 4), q = Math.floor((+k.slice(5, 7) - 1) / 3), key = y * 4 + q; (qAvg[key] = qAvg[key] || []).push(ix[k]); });
+    const lvl = {};
+    Object.keys(qAvg).forEach((k) => { if (qAvg[k].length === 3) lvl[k] = qAvg[k].reduce((a, b) => a + b, 0) / 3; });
+    const sq = P.y * 4 + (P.q - 1); // the survey's quarter; CPI1 = the quarter before it
+    const path = {};
+    for (let i = 0; i < 6; i++) {
+      const qk = sq - 1 + i;
+      if (lvl[qk] != null) continue; // actual data wins
+      const prev = lvl[qk - 1];
+      if (prev == null) break;
+      lvl[qk] = prev * Math.pow(1 + P.v[i] / 100, 0.25);
+      const yago = lvl[qk - 4];
+      if (yago) path[mKey(Math.floor(qk / 4), (qk % 4) * 3 + 1)] = (lvl[qk] / yago - 1) * 100;
+    }
+    const f = after(path);
+    if (Object.keys(f).length) out.fcSpf = start(f);
+  }
+  // Fannie Mae: quarterly CPI vs a year earlier
+  if (s.fannie && s.fannie.q) { const f = after(s.fannie.q); if (Object.keys(f).length) out.fcFannie = start(f); }
+  // the market model: each year's own expected rate, at the end of that year from its date
+  const C = s.clevPath;
+  if (C && C.fwd) { const f = {}; C.fwd.forEach((v, i) => { f[mStr(mIdx(C.m) + 12 * (i + 1))] = v; }); out.fcClev = start(after(f)); }
+  // the Fed: median PCE inflation for each year (fourth quarter vs a year earlier), dated December
+  const F = s.fomc && s.fomc.path;
+  if (F && F.length) { const f = {}; F.forEach((p) => { f[`${p.y}-12`] = p.v; }); out.fcFed = after(f); }
+  return out;
+}
+
+// ---------- The Fed's calendar: FOMC meetings and Board speeches ----------
+const FED = "https://www.federalreserve.gov";
+const MONTHS_RE = "January|February|March|April|May|June|July|August|September|October|November|December";
+function htmlLines(html) {
+  return String(html)
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<(br|\/p|\/div|\/li|\/tr|\/td|\/th|\/h\d|\/strong|\/a|\/span)\b[^>]*>/gi, "$&\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'").replace(/&ldquo;|&rdquo;|&quot;/g, '"').replace(/&ndash;/g, "–")
+    .split("\n").map((l) => l.replace(/\s+/g, " ").trim()).filter((l) => l);
+}
+// fomccalendars.htm: "2026 FOMC Meetings", then a month ("September" or "April/May"), its days
+// ("15-16*": the asterisk means projections), and "(Released October 07, 2026)" under minutes
+function parseFomc(lines) {
+  const out = [];
+  let year = null, cur = null;
+  const monthIdx = (n) => MONF.findIndex((x) => x.toLowerCase() === n.toLowerCase());
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    const y = l.match(/^(\d{4}) FOMC Meetings/);
+    if (y) { year = +y[1]; cur = null; continue; }
+    if (!year) continue;
+    const mo = l.match(new RegExp(`^(${MONTHS_RE})(?:/(${MONTHS_RE}))?$`));
+    if (mo) {
+      const nx = lines[i + 1] || "", d = nx.match(/^(\d{1,2})(?:-(\d{1,2}))?(\*)?/);
+      if (!d) continue;
+      const m1 = monthIdx(mo[1]), m2 = mo[2] ? monthIdx(mo[2]) : m1, d1 = +d[1], d2 = d[2] ? +d[2] : d1;
+      cur = { start: isoDay(new Date(Date.UTC(year, m1, d1))), end: isoDay(new Date(Date.UTC(year + (m2 < m1 ? 1 : 0), m2, d2))), sep: !!d[3], note: /unscheduled|notation/i.test(nx) ? nx.replace(/^[\d\-*\s]+/, "") : "" };
+      out.push(cur);
+      i++;
+      continue;
+    }
+    const r = l.match(new RegExp(`^\\(Released (${MONTHS_RE}) (\\d{1,2}), (\\d{4})\\)$`));
+    if (r && cur) cur.minutes = isoDay(new Date(Date.UTC(+r[3], monthIdx(r[1]), +r[2])));
+  }
+  return out.filter((m) => !m.note);
+}
+// a month's calendar page: the Speeches and Testimony sections, each entry a speaker line
+// ("Speech - Governor Lisa D. Cook"), its topic, "At ..." and a time and day nearby
+function parseSpeeches(lines, y, m0) {
+  const out = [];
+  const isTime = (l) => /^\d{1,2}:\d{2}\s*[ap]\.?m\.?$/i.test(l), isDay = (l) => /^\d{1,2}$/.test(l);
+  const WHO = /^(Speech|Testimony|Discussion|Remarks|Panel Discussion|Fireside Chat|Opening Remarks|Welcoming Remarks|Video)\s+[-–]\s+(.+)$/i;
+  let sec = null, start = 0;
+  const flush = (a, z) => {
+    // the speaker lines in this section; each entry's own lines run to the next speaker line
+    const S = [];
+    for (let i = a; i < z; i++) if (WHO.test(lines[i])) S.push(i);
+    if (!S.length) return;
+    // which side of the speaker line the day and time sit on, from the first entry
+    const pre = lines.slice(a, S[0]);
+    const dayBefore = pre.some(isDay), timeBefore = pre.some(isTime);
+    S.forEach((si, k) => {
+      const lo = k ? S[k - 1] + 1 : a, hi = k + 1 < S.length ? S[k + 1] : z;
+      const before = lines.slice(lo, si), after = lines.slice(si + 1, hi);
+      const pick = (arr, f, last) => { const m = arr.filter(f); return m.length ? (last ? m[m.length - 1] : m[0]) : null; };
+      const dayL = dayBefore ? pick(before, isDay, true) : pick(after, isDay, false);
+      const timeL = timeBefore ? pick(before, isTime, true) : pick(after, isTime, false);
+      if (!dayL) return;
+      let topic = "", event = "";
+      for (const t of after) {
+        if (isTime(t) || isDay(t) || /^(Time:|Release Date|Watch Live)/i.test(t)) continue;
+        if (/^At /.test(t)) { if (!event) event = t; continue; }
+        if (!topic && !event) topic = t;
+      }
+      const who = lines[si].match(WHO);
+      out.push({ date: isoDay(new Date(Date.UTC(y, m0, +dayL))), time: timeL, kind: who[1], who: who[2], topic, event });
+    });
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/^(Speeches|Testimony)$/i.test(l)) { if (sec) flush(start, i); sec = l; start = i + 1; continue; }
+    if (/^(FOMC Meetings|Beige Book|Statistical Releases|Other|Discount Rate|Conferences)$/i.test(l)) { if (sec) flush(start, i); sec = null; continue; }
+  }
+  if (sec) flush(start, lines.length);
+  return out;
+}
+// Fed times are Eastern: shown in Central, an hour earlier
+function etToCt(t) {
+  const m = t && t.match(/^(\d{1,2}):(\d{2})\s*([ap])/i);
+  if (!m) return "";
+  let h = +m[1] % 12 + (m[3].toLowerCase() === "p" ? 12 : 0) - 1;
+  if (h < 0) h += 24;
+  return `${h % 12 || 12}:${m[2]}${h >= 12 ? "p" : "a"} CT`;
+}
+async function getFedCal() {
+  const lines = htmlLines(await getText([`${FED}/monetarypolicy/fomccalendars.htm`]));
+  const meetings = parseFomc(lines);
+  if (!meetings.length) throw new Error("couldn't read the FOMC calendar");
+  const speeches = [], now = new Date(), errs = [];
+  for (let k = 0; k <= 1; k++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + k, 1), y = d.getFullYear(), m0 = d.getMonth();
+    try {
+      const html = await getText([`${FED}/newsevents/${y}-${MONF[m0].toLowerCase()}.htm`, `${FED}/newsevents/${y}-${String(m0 + 1).padStart(2, "0")}.htm`]);
+      speeches.push(...parseSpeeches(htmlLines(html), y, m0));
+    } catch (e) { if (k === 0) errs.push(String(e.message || e)); }
+  }
+  return { meetings, speeches, err: errs[0] || null, cal: `${FED}/newsevents/calendar.htm` };
+}
+// what the page shows: the next two meetings, the next minutes, and speeches from today on
+function fedCalView(s) {
+  const F = s.fedcal;
+  if (!F) return null;
+  const today = todayCT();
+  const next = F.meetings.filter((m) => m.end >= today).slice(0, 2).map((m, k) => ({
+    start: m.start, end: m.end, sep: m.sep, likelySep: !m.sep && !F.meetings.some((x) => x.sep && x.start.slice(0, 4) === m.start.slice(0, 4)) && ["03", "06", "09", "12"].includes(m.start.slice(5, 7)),
+  }));
+  // minutes come out three weeks after each meeting
+  const past = F.meetings.filter((m) => m.end < today);
+  const lastMeet = past[past.length - 1];
+  let minutes = null;
+  if (lastMeet) {
+    const due = lastMeet.minutes || addDays(lastMeet.end, 21);
+    if (due >= today) minutes = { of: lastMeet.end, date: due, est: !lastMeet.minutes };
+  }
+  if (!minutes && next[0]) minutes = { of: next[0].end, date: addDays(next[0].end, 21), est: true };
+  const speeches = (F.speeches || []).filter((x) => x.date >= today).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || ""))).slice(0, 5).map((x) => ({ ...x, ct: etToCt(x.time) }));
+  return { next, minutes, speeches, err: F.err, cal: F.cal };
+}
+
 // ---------- Store ----------
 function storePath() { const fm = FileManager.local(); return fm.joinPath(fm.documentsDirectory(), STORE_FILE); }
 function readStore() {
@@ -562,6 +812,7 @@ async function refresh(s, inApp, say, live) {
     step("energy", "energy prices", getEnergy),
     step("pipe", "producer and import prices", getPipe),
     step("shelter", "shelter prices", getShelter),
+    step("clevPath", "the market model's path", getClevPath),
     (async () => {
       const ids = { cpi: "CPIAUCSL", pce: "PCEPI", clev: "EXPINF1YR", fomc: "PCECTPIMD", emp: "CES0500000003", eci: "ECIWAG", ppi: "PPIFIS", imp: "IR" };
       const cal = {};
@@ -574,6 +825,8 @@ async function refresh(s, inApp, say, live) {
     await step("spf", "Philadelphia Fed forecasters", getSpf);
     await step("gscpi", "NY Fed supply-chain index", getGscpi);
     await step("zori", "Zillow rents", getZori);
+    await step("fannie", "Fannie Mae's forecast", getFannie);
+    await step("fedcal", "the Fed's calendar", getFedCal);
   }
   s.at = Date.now();
   saveStore(s);
@@ -789,8 +1042,20 @@ function signals(s) {
     add({ key: "exp", name: "What people expect", m: exL.m, value: pct1(exL.v), d, thr: 0.3, dir,
       note: dir > 0 ? `More than inflation now (${pct1(cpi.v)}): people expect it to rise` : dir < 0 ? `Less than inflation now (${pct1(cpi.v)}): people expect it to ease` : `About where inflation is now (${pct1(cpi.v)})`,
       short: dir > 0 ? "People Expect More Inflation Than Now" : dir < 0 ? "People Expect Less Inflation Than Now" : "People Expect About the Inflation We Have",
-      what: "Expected inflation over the next year: the average of consumers (University of Michigan and NY Fed surveys), economists (Philadelphia Fed survey) and a market-based model (Cleveland Fed).",
-      lines: [{ k: "cpi", label: "Inflation now", col: "#FFFFFF", w: 2.2 }, { k: "exp", label: "Expected next year", col: "#FF9F0A", w: 2 }] });
+      what: "Solid lines are the past: what each group expected for the next 12 months at the time, and their average. Past the Today line, in the shaded area, dotted lines are forecasts of CPI vs a year earlier: economists (Philadelphia Fed survey, quarter by quarter), Fannie Mae's monthly forecast, and the market model's path year by year. Dots are the Fed's own projections for each year-end (PCE prices, which run a bit below CPI). Tap a name to hide or show it.",
+      chips: true, future: true,
+      lines: [
+        { k: "cpi", label: "Inflation now", col: "#FFFFFF", w: 2.2 },
+        { k: "exp", label: "Average expected", col: "#FF9F0A", w: 2.6 },
+        { k: "umich1", label: "Consumers (Michigan)", col: "#FFD60A", w: 1.3, piece: true },
+        { k: "sce1", label: "Consumers (NY Fed)", col: "#FF6482", w: 1.3, piece: true },
+        { k: "spf1", label: "Economists (Philly Fed)", col: "#64D2FF", w: 1.3, piece: true },
+        { k: "clev1", label: "Market model (Cleveland Fed)", col: "#BF5AF2", w: 1.3, piece: true },
+        { k: "fcSpf", label: "Economists (forecast)", col: "#64D2FF", w: 1.8, fc: true },
+        { k: "fcFannie", label: "Fannie Mae (forecast)", col: "#30D158", w: 1.8, fc: true },
+        { k: "fcClev", label: "Market model (forecast)", col: "#BF5AF2", w: 1.8, fc: true },
+        { k: "fcFed", label: "The Fed (projection, PCE)", col: "#E5E5EA", w: 1.8, fc: true, dots: true },
+      ] });
   }
   // 3. Wages: pay growth now vs 6 months ago
   const w = L(P.ahe);
@@ -922,7 +1187,10 @@ function payload(s) {
       clev1: pick(s.clev && s.clev.one), clev10: pick(s.clev && s.clev.ten),
       spf1: pick(s.spf && s.spf.cpi), spfP1: pick(s.spf && s.spf.pce), spf10: pick(s.spf && s.spf.cpi10), spfP10: pick(s.spf && s.spf.pce10),
       cpi3: pick(G.cpi3), exp: pick(G.exp), lr: pick(G.lr),
+      ...Object.fromEntries(Object.entries(forecasts(s)).map(([k, v]) => [k, pick(v)])),
     },
+    fed: fedCalView(s),
+    fcInfo: { spf: s.spf && s.spf.path ? `Q${s.spf.path.q} ${s.spf.path.y} survey` : null, fannie: s.fannie ? mLabel(s.fannie.pub) : null, clev: s.clevPath ? mLabel(s.clevPath.m) : null, fed: s.fomc && s.fomc.date ? s.fomc.date : null },
     fomc: s.fomc || null,
     sched: schedule(s),
     today: isoDay(new Date()),
@@ -962,6 +1230,21 @@ const PAGE_HTML = `<!DOCTYPE html>
   .schedNext i { display:block; font-style:normal; color:#8E8E93; font-size:10.5px; white-space:normal; }
   .late { color:#FF9F0A; }
   .schedMore { text-align:center; color:#64A8FF; font-size:12px; padding:6px 0 2px; border-top:1px solid #2C2C2E; }
+  #fed { margin:12px 0 4px; border:1px solid #2C2C2E; border-radius:12px; padding:8px 10px 8px; background:#232325; }
+  .fedHead { display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; margin-bottom:2px; }
+  .fedHead span { color:#8E8E93; font-size:10.5px; }
+  .fedRow { display:flex; gap:8px; font-size:12.5px; padding:5px 0; border-top:1px solid #2C2C2E; line-height:1.3; }
+  .fedRow:first-of-type { border-top:none; }
+  .fedRow .when { width:92px; flex:none; color:#E5E5EA; font-weight:600; font-variant-numeric:tabular-nums; }
+  .fedRow .when i { display:block; font-style:normal; color:#8E8E93; font-size:10.5px; font-weight:500; }
+  .fedRow .what2 { flex:1; color:#E5E5EA; }
+  .fedRow .what2 i { display:block; font-style:normal; color:#8E8E93; font-size:11px; }
+  .fedLink { color:#64A8FF; }
+  .legend.chips > span { cursor:pointer; padding:3px 8px; margin:3px 6px 3px 0; border-radius:10px; background:#2C2C2E; white-space:normal; max-width:100%; }
+  .legend.chips { font-size:12px; }
+  .legend.chips > span.hid { opacity:0.35; }
+  .legend .dash { background:none !important; border-top:2px dashed; height:0; width:14px; }
+  .legend .dotk { width:7px; height:7px; border-radius:4px; }
   .verdict { margin-top:16px; background:#2C2C2E; border-radius:14px; padding:14px 14px 12px; display:flex; align-items:center; gap:12px; }
   .verdict .arr { font-size:54px; font-weight:800; line-height:1; width:46px; text-align:center; }
   .verdict .vt { font-size:24px; font-weight:800; }
@@ -1016,6 +1299,7 @@ const PAGE_HTML = `<!DOCTYPE html>
   <div class="ticker">Inflation</div>
   <div class="name">Is it heading up or down?</div>
   <div class="hint" id="status"></div>
+  <div id="fed" style="display:none"></div>
   <div id="sched"></div>
 
   <div class="verdict" id="verdict"></div>
@@ -1043,7 +1327,10 @@ const PAGE_HTML = `<!DOCTYPE html>
 window.onerror = function (m, src, line) { window.__drawn = true; var e = document.getElementById("status"); if (e) e.textContent = "Page error: " + m + " (line " + line + ")"; };
 var D = __DATA__;
 var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-var PRESET = 60, VIEW = null, CUR = null, GEO = {}, OPEN = {};
+var PRESET = 60, VIEW = null, CUR = null, GEO = {}, OPEN = {}, HIDE = {};
+var SW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function dayName(d) { var t = new Date(d + "T12:00:00Z"); return SW[t.getUTCDay()] + " " + MON[t.getUTCMonth()] + " " + t.getUTCDate(); }
+function todayI() { return D.today ? idx(D.today.slice(0, 7)) : endAll(); }
 var DIRC = { "-1": "#64D2FF", "0": "#98989F", "1": "#FF9F0A" }, ARR = { "-1": "↓", "0": "→", "1": "↑" };
 function el(id) { return document.getElementById(id); }
 function idx(m) { var p = m.split("-"); return (+p[0]) * 12 + (+p[1]) - 1; }
@@ -1061,11 +1348,11 @@ function SG() { return (D.sig && D.sig.list) || []; }
 var MAIN = [{ k: "cpi", label: "Inflation now", col: "#FFFFFF", w: 2.4 }, { k: "exp", label: "Expected next year", col: "#FF9F0A", w: 2.2 }];
 function charts() {
   var out = [{ id: "c1", leg: "leg1", sub: "sub1", lines: MAIN }];
-  SG().forEach(function (sg, n) { if (OPEN[sg.key]) out.push({ id: "g" + n, leg: "gl" + n, sub: "gs" + n, lines: sg.lines, target: sg.target, unit: sg.unit, h: 150 }); });
+  SG().forEach(function (sg, n) { if (OPEN[sg.key]) out.push({ id: "g" + n, leg: "gl" + n, sub: "gs" + n, lines: sg.lines, target: sg.target, unit: sg.unit, h: sg.future ? 220 : 150, chips: sg.chips, future: sg.future }); });
   return out;
 }
 function ownEnd(lines) { var e = -1; lines.forEach(function (ln) { var x = lastI(ln.k); if (x != null && x > e) e = x; }); return e; }
-function allLines() { var a = MAIN.slice(); SG().forEach(function (sg) { a = a.concat(sg.lines); }); return a; }
+function allLines() { var a = MAIN.slice(); SG().forEach(function (sg) { a = a.concat(sg.lines.filter(function (ln) { return !ln.fc; })); }); return a; }
 function endAll() { return ownEnd(allLines()); }
 function firstAll() { var f = Infinity; allLines().forEach(function (ln) { var ks = Object.keys(S(ln.k)); if (ks.length) { ks.sort(); f = Math.min(f, idx(ks[0])); } }); return isFinite(f) ? f : endAll() - 120; }
 function clampView(a, b) { var e = endAll(), f = firstAll(), span = Math.max(11, Math.min(e - f, b - a)); a = Math.max(f, Math.min(e - span, a)); return { a: a, b: a + span }; }
@@ -1083,8 +1370,15 @@ function fmtV(v, unit) { return unit === "sd" ? (v > 0 ? "+" : "") + v.toFixed(2
 function draw(c) {
   var svg = el(c.id); if (!svg) return;
   var W = svg.clientWidth || 340, H = c.h || 200, L = 36, R = W - 8, T = 8, B = H - 22;
-  var V = viewNow(), va = V.a, vb = V.b, a = Math.floor(va), b = Math.ceil(vb), vals = [];
-  c.lines.forEach(function (ln) { var m = S(ln.k); for (var i = a; i <= b; i++) { var v = m[mOf(i)]; if (v != null) vals.push(v); } });
+  var V = viewNow(), va = V.a, vb = V.b;
+  // a chart with forecasts runs on past today when the dates reach today: about 30 months, never more than half the width
+  var lines = c.lines.filter(function (ln) { return !HIDE[ln.k]; }), tI = todayI(), fEnd = -1;
+  if (c.future && vb >= endAll() - 1) {
+    lines.forEach(function (ln) { if (ln.fc) { var x = lastI(ln.k); if (x != null && x > fEnd) fEnd = x; } });
+    if (fEnd > vb) vb = Math.min(fEnd + 2, vb + Math.max(12, Math.min(30, vb - va)));
+  }
+  var a = Math.floor(va), b = Math.ceil(vb), vals = [];
+  lines.forEach(function (ln) { var m = S(ln.k); for (var i = a; i <= b; i++) { var v = m[mOf(i)]; if (v != null) vals.push(v); } });
   if (c.target != null) vals.push(c.target);
   if (vb < 0 || !vals.length) { svg.innerHTML = '<text x="' + (W / 2) + '" y="' + (H / 2) + '" fill="#8E8E93" font-size="13" text-anchor="middle">No data yet</text>'; return; }
   var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), st = niceStep(hi - lo, c.unit);
@@ -1093,6 +1387,13 @@ function draw(c) {
   var Y = function (v) { return B - (v - lo) / (hi - lo) * (B - T); };
   GEO[c.id] = { a: va, b: vb, L: L, R: R };
   var o = '<defs><clipPath id="clip' + c.id + '"><rect x="' + L + '" y="' + T + '" width="' + (R - L) + '" height="' + (B - T) + '"/></clipPath></defs>';
+  // the future: shaded, with a Today line, so forecasts can't be mistaken for data
+  if (c.future && tI < vb) {
+    var tx = Math.max(L, X(tI));
+    o += '<rect x="' + tx + '" y="' + T + '" width="' + (R - tx) + '" height="' + (B - T) + '" fill="#FFFFFF" fill-opacity="0.06"/>';
+    if (X(tI) >= L) o += '<line x1="' + tx + '" x2="' + tx + '" y1="' + T + '" y2="' + B + '" stroke="#E5E5EA" stroke-width="1"/><text x="' + (tx - 4) + '" y="' + (T + 11) + '" fill="#E5E5EA" font-size="10" font-weight="700" text-anchor="end">Today</text>';
+    o += '<text x="' + (tx + 5) + '" y="' + (T + 11) + '" fill="#E5E5EA" font-size="10" font-weight="700">Forecasts ›</text>';
+  }
   for (var v = lo; v <= hi + st / 2; v += st) {
     o += '<line x1="' + L + '" x2="' + R + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="#3A3A3C" stroke-width="0.6"/>';
     o += '<text x="' + (L - 5) + '" y="' + (Y(v) + 3.5) + '" fill="#8E8E93" font-size="10" text-anchor="end">' + fmtAxis(v, st, c.unit) + "</text>";
@@ -1108,28 +1409,35 @@ function draw(c) {
     o += '<text x="' + (L + 4) + '" y="' + (Y(c.target) - 4) + '" fill="#E5E5EA" font-size="10">' + (c.unit === "sd" ? "normal" : "Fed's 2% target") + "</text>";
   }
   o += '<g clip-path="url(#clip' + c.id + ')">';
-  c.lines.slice().reverse().forEach(function (ln) {
-    var mp = S(ln.k), d = "", prev = null;
+  lines.slice().reverse().forEach(function (ln) {
+    var mp = S(ln.k), d = "", prev = null, dots = "";
     for (var i2 = a; i2 <= b; i2++) {
       var v2 = mp[mOf(i2)]; if (v2 == null) continue;
-      d += (prev != null && i2 - prev <= 4 ? "L" : "M") + X(i2).toFixed(1) + " " + Y(v2).toFixed(1);
+      if (ln.dots) { dots += '<circle cx="' + X(i2).toFixed(1) + '" cy="' + Y(v2).toFixed(1) + '" r="4" fill="#1C1C1E" stroke="' + ln.col + '" stroke-width="2"/>'; continue; }
+      d += (prev != null && i2 - prev <= (ln.fc ? 15 : 4) ? "L" : "M") + X(i2).toFixed(1) + " " + Y(v2).toFixed(1);
+      if (ln.fc && prev != null) dots += '<circle cx="' + X(i2).toFixed(1) + '" cy="' + Y(v2).toFixed(1) + '" r="2.2" fill="' + ln.col + '"/>';
       prev = i2;
     }
-    if (d) o += '<path d="' + d + '" fill="none" stroke="' + ln.col + '" stroke-width="' + (ln.w || 2) + '" stroke-linejoin="round" stroke-linecap="round"/>';
+    if (d) o += '<path d="' + d + '" fill="none" stroke="' + ln.col + '" stroke-width="' + (ln.w || 2) + '" stroke-linejoin="round" stroke-linecap="round"' + (ln.fc ? ' stroke-dasharray="5 4"' : "") + (ln.piece ? ' stroke-opacity="0.8"' : "") + "/>";
+    o += dots;
   });
   o += "</g>";
   if (CUR != null && CUR >= va && CUR <= vb) o += '<line x1="' + X(CUR) + '" x2="' + X(CUR) + '" y1="' + T + '" y2="' + B + '" stroke="#E5E5EA" stroke-width="1"/>';
   svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.style.height = H + "px";
   svg.innerHTML = o;
 }
 // each line's value at the touched month, or its latest
 function legend(c) {
-  var out = "", e = ownEnd(c.lines);
+  var out = "", e = ownEnd(c.lines.filter(function (ln) { return !ln.fc; }));
   c.lines.forEach(function (ln) {
-    var hit = CUR != null ? at(ln.k, CUR, 2) : (function () { var li = lastI(ln.k); return li != null ? { v: S(ln.k)[mOf(li)], i: li } : null; })();
-    out += '<span class="' + (hit ? "" : "off") + '"><i style="background:' + ln.col + '"></i>' + esc(ln.label) + "<b>" + (hit ? fmtV(hit.v, c.unit) : "–") + "</b></span>";
+    if (c.chips && !Object.keys(S(ln.k)).length) return; // a source that didn't load: no chip
+    var hit = CUR != null ? at(ln.k, CUR, ln.fc ? 0 : 2) : (function () { var li = lastI(ln.k); return li != null ? { v: S(ln.k)[mOf(li)], i: li } : null; })();
+    var sw = ln.dots ? '<i class="dotk" style="background:' + ln.col + '"></i>' : ln.fc ? '<i class="dash" style="border-color:' + ln.col + '"></i>' : '<i style="background:' + ln.col + '"></i>';
+    var val = hit ? fmtV(hit.v, c.unit) + (ln.fc && CUR == null ? " by " + mLab(hit.i) : "") : "–";
+    out += '<span class="' + (hit ? "" : "off") + (HIDE[ln.k] ? " hid" : "") + '"' + (c.chips ? ' data-line="' + ln.k + '"' : "") + ">" + sw + esc(ln.label) + "<b>" + val + "</b></span>";
   });
-  if (el(c.leg)) el(c.leg).innerHTML = out;
+  if (el(c.leg)) { el(c.leg).innerHTML = out; el(c.leg).className = "legend" + (c.chips ? " chips" : ""); }
   if (el(c.sub)) el(c.sub).textContent = CUR != null ? mLab(CUR) : e >= 0 ? "Latest, through " + mLab(e) : "";
 }
 function drawCharts() { charts().forEach(function (c) { draw(c); legend(c); }); }
@@ -1187,8 +1495,28 @@ function renderTables() {
   });
   el("ptbl").innerHTML = g;
 }
+window.__takeOpen = function () { var u = window.__openUrl; window.__openUrl = null; return u || null; };
+function renderFed() {
+  var F = D.fed, box = el("fed");
+  if (!F) { box.style.display = "none"; return; }
+  box.style.display = "";
+  var rows = [];
+  (F.next || []).forEach(function (m, k) {
+    var sameMonth = m.start.slice(0, 7) === m.end.slice(0, 7);
+    var span = MON[+m.start.slice(5, 7) - 1] + " " + (+m.start.slice(8, 10)) + "–" + (sameMonth ? "" : MON[+m.end.slice(5, 7) - 1] + " ") + (+m.end.slice(8, 10));
+    var bits = (m.sep ? "With projections (the dot plot) and a press conference" : m.likelySep ? "Press conference; projections likely (not yet marked by the Fed)" : "Press conference") + "; decision " + dayName(m.end) + ", 1:00p CT";
+    rows.push('<div class="fedRow"><div class="when">' + span + "<i>" + m.start.slice(0, 4) + '</i></div><div class="what2">' + (k ? "Following FOMC meeting" : "Next FOMC meeting") + "<i>" + esc(bits) + "</i></div></div>");
+  });
+  if (F.minutes) rows.push('<div class="fedRow"><div class="when">' + dayName(F.minutes.date) + "<i>" + (F.minutes.est ? "about, " : "") + '1:00p CT</i></div><div class="what2">Minutes of the ' + MON[+F.minutes.of.slice(5, 7) - 1] + " meeting<i>" + (F.minutes.est ? "Usually three weeks after the meeting" : "Scheduled") + "</i></div></div>");
+  (F.speeches || []).forEach(function (x) {
+    rows.push('<div class="fedRow"><div class="when">' + dayName(x.date) + "<i>" + esc(x.ct || "time not posted") + '</i></div><div class="what2">' + esc(x.who) + (x.kind && !/^speech$/i.test(x.kind) ? " (" + esc(x.kind.toLowerCase()) + ")" : "") + "<i>" + esc([x.topic, x.event].filter(Boolean).join(" · ")) + "</i></div></div>");
+  });
+  if (!(F.speeches || []).length) rows.push('<div class="fedRow"><div class="what2"><i>' + (F.err ? "Couldn't read the Fed's speaking calendar. " : "No Fed Board speeches posted for the rest of this month or next. ") + '<span class="fedLink" data-open="' + esc(F.cal) + '">Open the Fed calendar</span></i></div></div>');
+  box.innerHTML = '<div class="fedHead"><b>Fed calendar</b><span>meetings · minutes · Board speeches (Central)</span></div>' + rows.join("");
+}
 function renderSegs() { Array.prototype.forEach.call(document.querySelectorAll("#segs span[data-r]"), function (s) { s.className = !VIEW && +s.getAttribute("data-r") === PRESET ? "on" : ""; }); }
 function renderAll() {
+  renderFed();
   renderSched(D.sched, false);
   renderVerdict();
   renderSegs();
@@ -1206,6 +1534,10 @@ function renderAll() {
 document.addEventListener("click", function (e) {
   var t = e.target;
   if (!t || !t.closest) return;
+  var ch = t.closest("[data-line]");
+  if (ch) { var lk = ch.getAttribute("data-line"); HIDE[lk] = !HIDE[lk]; drawCharts(); return; }
+  var op = t.closest("[data-open]");
+  if (op) { window.__openUrl = op.getAttribute("data-open"); return; }
   var r = t.closest("[data-r]");
   if (r) { PRESET = +r.getAttribute("data-r"); VIEW = null; CUR = null; renderSegs(); drawCharts(); return; }
   var row = t.closest(".srow");
@@ -1285,12 +1617,13 @@ window.printPdf = function (jsPDF, fonts) {
     FACE = "Narrow";
   }
   var INK = [28, 28, 30], GRY = [110, 110, 115], RULE = [222, 222, 226];
-  var PC = { "#FFFFFF": [28, 28, 30], "#98989F": [140, 140, 146], "#FF9F0A": [214, 120, 0], "#FFD60A": [184, 140, 0], "#64D2FF": [0, 119, 200], "#30D158": [30, 150, 69] };
+  var PC = { "#FFFFFF": [28, 28, 30], "#98989F": [140, 140, 146], "#FF9F0A": [214, 120, 0], "#FFD60A": [184, 140, 0], "#64D2FF": [0, 119, 200], "#30D158": [30, 150, 69], "#FF6482": [215, 40, 90], "#BF5AF2": [142, 59, 184], "#E5E5EA": [60, 60, 66] };
   var PDIR = { "-1": [0, 119, 200], "0": [130, 130, 136], "1": [214, 120, 0] };
   function font(bold, size, c) { doc.setFont(FACE, bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor(c[0], c[1], c[2]); }
   function rgb(hex) { return PC[hex] || INK; }
   function clean(t) { return String(t).split("’").join("'").split("–").join("-").split("—").join("-").split("·").join("-"); }
   var G = D.sig || { list: [] }, PV = viewNow(), a = Math.ceil(PV.a), b = Math.floor(PV.b);
+  var B_END = b;
   function headline(text) {
     var size = 21, lines;
     do { font(true, size, INK); lines = doc.splitTextToSize(clean(text), W - 72); size -= 1; } while (lines.length > 1 && size > 15);
@@ -1314,25 +1647,40 @@ window.printPdf = function (jsPDF, fonts) {
     doc.text("Scorecard", W - 162, bY + 34);
   }
   function lineChart(L, R, Tt, B, c) {
-    var vals = [];
-    c.lines.forEach(function (ln) { var m = S(ln.k); for (var i = a; i <= b; i++) if (m[mOf(i)] != null) vals.push(m[mOf(i)]); });
+    var vals = [], b0 = B_END, lines = c.lines.filter(function (ln) { return !HIDE[ln.k] && Object.keys(S(ln.k)).length; });
+    var b = b0, tI = todayI();
+    if (c.future && b0 >= endAll() - 1) { var fe = -1; lines.forEach(function (ln) { if (ln.fc) { var x = lastI(ln.k); if (x != null && x > fe) fe = x; } }); if (fe > b0) b = Math.min(fe + 2, b0 + Math.max(12, Math.min(30, b0 - a))); }
+    c = { lines: lines, target: c.target, unit: c.unit, future: c.future };
+    lines.forEach(function (ln) { var m = S(ln.k); for (var i = a; i <= b; i++) if (m[mOf(i)] != null) vals.push(m[mOf(i)]); });
     if (c.target != null) vals.push(c.target);
     if (!vals.length) return;
     var lx = L;
-    c.lines.forEach(function (ln) { var col = rgb(ln.col); font(true, 8.5, INK); doc.setFillColor(col[0], col[1], col[2]); doc.rect(lx, Tt - 14, 9, 3, "F"); doc.text(clean(ln.label), lx + 12, Tt - 10); lx += doc.getTextWidth(clean(ln.label)) + 26; });
+    // the key, wrapping as needed; the chart starts below it
+    var row = 0, items = [];
+    lines.forEach(function (ln) { var lab = clean(ln.label); font(true, 7.5, INK); var w = doc.getTextWidth(lab) + 22; if (lx + w > R + 4 && lx > L) { lx = L; row++; } items.push({ ln: ln, lab: lab, x: lx, row: row }); lx += w; });
+    items.forEach(function (it) { var col = rgb(it.ln.col), yy = Tt - 22 + it.row * 9; font(true, 7.5, INK); doc.setFillColor(col[0], col[1], col[2]); if (it.ln.fc) { doc.rect(it.x, yy - 3, 3, 2, "F"); doc.rect(it.x + 5, yy - 3, 3, 2, "F"); } else doc.rect(it.x, yy - 3.5, 9, 3, "F"); doc.text(it.lab, it.x + 12, yy); });
+    Tt += row * 9;
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), st = niceStep(hi - lo, c.unit);
     lo = Math.floor((lo - 0.1) / st) * st; hi = Math.ceil((hi + 0.1) / st) * st;
     var X = function (i) { return L + (i - a) / Math.max(1, b - a) * (R - L); }, Y = function (v) { return B - (v - lo) / (hi - lo) * (B - Tt); };
+    if (c.future && tI < b) { var tx = Math.max(L, X(tI)); doc.setFillColor(242, 242, 245); doc.rect(tx, Tt, R - tx, B - Tt, "F"); doc.setDrawColor(INK[0], INK[1], INK[2]); doc.setLineWidth(0.8); doc.line(tx, Tt, tx, B); font(true, 7.5, INK); doc.text("Today", tx - 3, Tt + 9, { align: "right" }); doc.text("Forecasts", tx + 3, Tt + 9); }
     doc.setLineWidth(0.5);
     for (var v = lo; v <= hi + st / 2; v += st) { doc.setDrawColor(RULE[0], RULE[1], RULE[2]); doc.line(L, Y(v), R, Y(v)); font(false, 8.5, GRY); doc.text(fmtAxis(v, st, c.unit), L - 5, Y(v) + 3, { align: "right" }); }
     var ev = every(b - a), lastX = -99;
     for (var i = a; i <= b; i++) { var lab = dateLab(mOf(i), ev); if (lab && X(i) - lastX > 30) { doc.setDrawColor(150, 150, 155); doc.line(X(i), B, X(i), B + 3); font(false, 8.5, GRY); doc.text(lab, X(i), B + 13, { align: "center" }); lastX = X(i); } }
     if (c.target != null) { doc.setDrawColor(INK[0], INK[1], INK[2]); doc.setLineWidth(0.9); doc.setLineDashPattern([4, 3], 0); doc.line(L, Y(c.target), R, Y(c.target)); doc.setLineDashPattern([], 0); font(true, 8, INK); doc.text(c.unit === "sd" ? "normal" : "Fed's 2% target", R - 2, Y(c.target) - 4, { align: "right" }); }
     if (doc.setLineCap) doc.setLineCap("round");
-    c.lines.slice().reverse().forEach(function (ln) {
+    lines.slice().reverse().forEach(function (ln) {
       var col = rgb(ln.col), mp = S(ln.k), prev = null;
-      doc.setDrawColor(col[0], col[1], col[2]); doc.setLineWidth((ln.w || 2) > 2.1 ? 1.8 : 1.4);
-      for (var i2 = a; i2 <= b; i2++) { var v2 = mp[mOf(i2)]; if (v2 == null) continue; if (prev != null && i2 - prev <= 4) doc.line(X(prev), Y(mp[mOf(prev)]), X(i2), Y(v2)); prev = i2; }
+      doc.setDrawColor(col[0], col[1], col[2]); doc.setLineWidth((ln.w || 2) > 2.1 ? 1.8 : ln.piece ? 0.9 : 1.4);
+      if (ln.fc) doc.setLineDashPattern([3, 2], 0);
+      for (var i2 = a; i2 <= b; i2++) {
+        var v2 = mp[mOf(i2)]; if (v2 == null) continue;
+        if (ln.dots) { doc.setFillColor(255, 255, 255); doc.circle(X(i2), Y(v2), 2.6, "FD"); continue; }
+        if (prev != null && i2 - prev <= (ln.fc ? 15 : 4)) doc.line(X(prev), Y(mp[mOf(prev)]), X(i2), Y(v2));
+        prev = i2;
+      }
+      doc.setLineDashPattern([], 0);
     });
     if (doc.setLineCap) doc.setLineCap("butt");
   }

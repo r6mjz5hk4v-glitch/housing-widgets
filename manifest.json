@@ -495,8 +495,12 @@
     "fred"
    ],
    "sig": "// Inflation Expectations Widget for Scriptable (small widget)",
-   "hash": "f25dfa1",
+   "hash": "eac6ed8f",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "A Fed calendar at the top (next FOMC meetings, minutes, Board speeches, in Central time). Open \"What people expect\" to see each group, with chips to hide them, plus forecasts running past Today: economists, Fannie Mae, the market model and the Fed's projections."
+    },
     {
      "d": "2026-11-19",
      "t": "New: is inflation heading up or down? A scorecard of eight signals (today's pace, what people expect, wages, oil, producer prices, new-lease rents, long-run expectations, supply chains), with a chart for each and a two-slide PDF."
