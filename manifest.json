@@ -487,6 +487,23 @@
    ]
   },
   {
+   "name": "Inflation",
+   "file": "InflationWidget.js",
+   "title": "Inflation",
+   "about": "Is inflation heading up or down? A scorecard of 8 signals: expectations, wages, oil, producer prices, rents, supply chains",
+   "needs": [
+    "fred"
+   ],
+   "sig": "// Inflation Expectations Widget for Scriptable (small widget)",
+   "hash": "f25dfa1",
+   "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "New: is inflation heading up or down? A scorecard of eight signals (today's pace, what people expect, wages, oil, producer prices, new-lease rents, long-run expectations, supply chains), with a chart for each and a two-slide PDF."
+    }
+   ]
+  },
+  {
    "name": "Chartbook",
    "file": "ReportsWidget.js",
    "title": "Chartbook",

@@ -464,5 +464,11 @@
    "d": "2026-11-17",
    "t": "ElevenLabs key is now just for Builder Stocks' earnings calls."
   }
+ ],
+ "InflationWidget.js": [
+  {
+   "d": "2026-11-19",
+   "t": "New: is inflation heading up or down? A scorecard of eight signals (today's pace, what people expect, wages, oil, producer prices, new-lease rents, long-run expectations, supply chains), with a chart for each and a two-slide PDF."
+  }
  ]
 }

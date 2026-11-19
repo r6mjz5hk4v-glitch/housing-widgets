@@ -48,6 +48,7 @@ You don't have to keep checking: once a day each widget looks for a newer versio
 | **Personal Savings** | Personal saving rate (BEA) | FRED key |
 | **Sentiment** | University of Michigan sentiment | FRED key |
 | **Unemployment** | Unemployment rate (BLS) | FRED key |
+| **Inflation** | Is inflation heading up or down? A scorecard of 8 signals, with what consumers, economists and markets expect | FRED key |
 | **Chartbook** | Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA commentary, HUD, Fed) and builder investor decks | — |
 
 ## Your keys and settings
