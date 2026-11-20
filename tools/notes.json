@@ -496,6 +496,10 @@
  "InflationWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "New home-screen face: the verdict as a colored badge, then all 8 signals as tiles (orange up, blue down, gray steady) with short names, and CPI vs. expected at the bottom. Tapping still opens the full page."
+  },
+  {
+   "d": "2026-11-19",
    "t": "Tapping the widget right after closing it now opens Inflation every time, instead of sometimes landing on Scriptable's script list. Closing the view stops the slow downloads; whatever didn't finish catches up on the next open."
   },
   {

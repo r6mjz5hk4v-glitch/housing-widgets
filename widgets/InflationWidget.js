@@ -1130,6 +1130,9 @@ function signals(s) {
 
 // ---------- Widget face: the verdict ----------
 const DIRCOL = { "-1": "#64D2FF", "0": "#98989F", "1": "#FF9F0A" }, ARROW = { "-1": "↓", "0": "→", "1": "↑" };
+// The small face: the verdict as a colored badge, then one tile per signal (arrow and a
+// short name, tinted by direction), then CPI now and expected over the next year
+const TILE_NAMES = [["mom", "CPI"], ["exp", "Expect"], ["wages", "Wages"], ["oil", "Oil"], ["ppi", "PPI"], ["rent", "Rents"], ["lr", "Long"], ["supply", "Supply"]];
 function face(s) {
   const G = signals(s), M = model(s);
   const W = 510, dc = new DrawContext();
@@ -1139,25 +1142,39 @@ function face(s) {
   dc.setFillColor(new Color("#1C1C1E"));
   dc.fillRect(new Rect(0, 0, W, W));
   const text = (str, x, y, w, h, size, hex, weight, align) => {
-    dc.setFont(weight === "bold" ? Font.boldSystemFont(size) : weight === "semi" ? Font.semiboldSystemFont(size) : Font.mediumSystemFont(size));
+    dc.setFont(weight === "heavy" ? Font.heavySystemFont(size) : weight === "bold" ? Font.boldSystemFont(size) : weight === "semi" ? Font.semiboldSystemFont(size) : Font.mediumSystemFont(size));
     dc.setTextColor(new Color(hex));
     if (align === "right") dc.setTextAlignedRight(); else if (align === "center") dc.setTextAlignedCenter(); else dc.setTextAlignedLeft();
     dc.drawTextInRect(str, new Rect(x, y, w, h));
   };
-  const pad = 36, col = DIRCOL[String(G.dir)];
-  text("INFLATION", pad, 30, W - 2 * pad, 34, 25, "#98989F", "semi");
-  // the verdict: an arrow and two words
-  text(ARROW[String(G.dir)], pad - 4, 62, 120, 150, 120, col, "bold");
-  text(G.verdict.split(" ")[0], pad + 118, 80, W - 2 * pad - 118, 60, 50, "#FFFFFF", "bold");
-  text(G.verdict.split(" ").slice(1).join(" "), pad + 118, 136, W - 2 * pad - 118, 60, 50, "#FFFFFF", "bold");
-  text(G.n ? G.count : "Open the widget once to load data", pad, 222, W - 2 * pad, 64, 26, "#C7C7CC", "semi");
-  // every signal as a small arrow, in order
-  const cw = (W - 2 * pad) / Math.max(1, G.list.length);
-  G.list.forEach((sg, k) => text(ARROW[String(sg.dir)], pad + k * cw, 292, cw, 60, 42, DIRCOL[String(sg.dir)], "bold", "center"));
-  // the two numbers people know
+  const box = (x, y, w, h, r, hex, alpha) => { const p = new Path(); p.addRoundedRect(new Rect(x, y, w, h), r, r); dc.addPath(p); dc.setFillColor(new Color(hex, alpha == null ? 1 : alpha)); dc.fillPath(); };
+  const pad = 30;
+  text("INFLATION", pad + 4, 36, 200, 32, 23, "#98989F", "bold");
+  if (!G.n) {
+    text("Open the widget once", pad, 190, W - 2 * pad, 40, 30, "#C7C7CC", "semi", "center");
+    text("to load data", pad, 230, W - 2 * pad, 40, 30, "#C7C7CC", "semi", "center");
+    return dc.getImage();
+  }
+  // the verdict badge, right-aligned; its width from the text (about 0.6 of the font size per character)
+  const col = DIRCOL[String(G.dir)], badge = `${ARROW[String(G.dir)]} ${G.verdict}`, bs = 25;
+  const bw = Math.min(W - 2 * pad - 150, Math.round(badge.length * bs * 0.6) + 34);
+  box(W - pad - bw, 28, bw, 44, 22, col);
+  text(badge, W - pad - bw, 36, bw, 34, bs, "#1C1C1E", "heavy", "center");
+  // the tiles: 2 rows of 4
+  const by = 92, gap = 10, tw = (W - 2 * pad - 3 * gap) / 4, th = 148;
+  const tint = { "1": ["#FF9F0A", 0.18], "-1": ["#64D2FF", 0.16], "0": ["#2C2C2E", 1] };
+  TILE_NAMES.forEach(([key, label], k) => {
+    const x = pad + (k % 4) * (tw + gap), y = by + Math.floor(k / 4) * (th + gap);
+    const sg = G.list.find((g) => g.key === key), d = sg ? String(sg.dir) : null;
+    const [bg, a] = d ? tint[d] : ["#2C2C2E", 0.5];
+    box(x, y, tw, th, 24, bg, a);
+    text(d ? ARROW[d] : "–", x, y + 22, tw, 62, 50, d ? (d === "0" ? "#AEAEB2" : DIRCOL[d]) : "#636366", "heavy", "center");
+    text(label, x, y + 92, tw, 36, 26, d ? "#F2F2F7" : "#8E8E93", "bold", "center");
+  });
+  // CPI now and what people expect over the next year
   const cpi = M.cpi ? M.cpi.v.toFixed(1) + "%" : "–", ex = G.list.find((x) => x.key === "exp");
-  text(`CPI ${cpi}  ·  expected ${ex ? ex.value : "–"}`, pad, 380, W - 2 * pad, 40, 30, "#FFFFFF", "semi", "center");
-  text(M.cpi ? `inflation in ${MONF[+M.cpi.m.slice(5, 7) - 1]} · next 12 months` : "", pad, 420, W - 2 * pad, 34, 22, "#8E8E93", "semi", "center");
+  text(`CPI ${cpi}`, pad + 6, 430, 230, 40, 29, "#FFFFFF", "bold");
+  text(`expected ${ex ? ex.value : "–"}`, W / 2 - 20, 434, W / 2 + 20 - pad - 6, 36, 23, "#8E8E93", "semi", "right");
   return dc.getImage();
 }
 function errorWidget(msg) {
