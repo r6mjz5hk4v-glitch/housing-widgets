@@ -496,6 +496,10 @@
  "InflationWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "Tapping the widget now opens Inflation every time, like your other widgets, and the home-screen face is sharp instead of blurry."
+  },
+  {
+   "d": "2026-11-19",
    "t": "The bottom of the home-screen face now reads \"past year → next year\": CPI over the last 12 months, then what forecasters and consumers expect over the coming 12, colored by whether that's above or below today."
   },
   {

@@ -1135,19 +1135,23 @@ const DIRCOL = { "-1": "#64D2FF", "0": "#98989F", "1": "#FF9F0A" }, ARROW = { "-
 const TILE_NAMES = [["mom", "CPI"], ["exp", "Expect"], ["wages", "Wages"], ["oil", "Oil"], ["ppi", "PPI"], ["rent", "Rents"], ["lr", "Long"], ["supply", "Supply"]];
 function face(s) {
   const G = signals(s), M = model(s);
-  const W = 510, dc = new DrawContext();
-  dc.size = new Size(W, W);
-  dc.respectScreenScale = false;
+  // laid out on a 510 grid, drawn at the widget's real size (170 points) at the
+  // screen's own scale, so iOS never shrinks a big image (that blurred it)
+  const W = 510, K = 170 / W, dc = new DrawContext();
+  dc.size = new Size(170, 170);
+  dc.respectScreenScale = true;
   dc.opaque = true;
   dc.setFillColor(new Color("#1C1C1E"));
-  dc.fillRect(new Rect(0, 0, W, W));
+  dc.fillRect(new Rect(0, 0, 170, 170));
+  const R = (x, y, w, h) => new Rect(x * K, y * K, w * K, h * K);
   const text = (str, x, y, w, h, size, hex, weight, align) => {
-    dc.setFont(weight === "heavy" ? Font.heavySystemFont(size) : weight === "bold" ? Font.boldSystemFont(size) : weight === "semi" ? Font.semiboldSystemFont(size) : Font.mediumSystemFont(size));
+    const sz = size * K;
+    dc.setFont(weight === "heavy" ? Font.heavySystemFont(sz) : weight === "bold" ? Font.boldSystemFont(sz) : weight === "semi" ? Font.semiboldSystemFont(sz) : Font.mediumSystemFont(sz));
     dc.setTextColor(new Color(hex));
     if (align === "right") dc.setTextAlignedRight(); else if (align === "center") dc.setTextAlignedCenter(); else dc.setTextAlignedLeft();
-    dc.drawTextInRect(str, new Rect(x, y, w, h));
+    dc.drawTextInRect(str, R(x, y, w, h));
   };
-  const box = (x, y, w, h, r, hex, alpha) => { const p = new Path(); p.addRoundedRect(new Rect(x, y, w, h), r, r); dc.addPath(p); dc.setFillColor(new Color(hex, alpha == null ? 1 : alpha)); dc.fillPath(); };
+  const box = (x, y, w, h, r, hex, alpha) => { const p = new Path(); p.addRoundedRect(R(x, y, w, h), r * K, r * K); dc.addPath(p); dc.setFillColor(new Color(hex, alpha == null ? 1 : alpha)); dc.fillPath(); };
   const pad = 30;
   text("INFLATION", pad + 4, 36, 200, 32, 23, "#98989F", "bold");
   if (!G.n) {
@@ -2212,10 +2216,12 @@ if (config.runsInWidget || PREVIEW_WIDGET_IN_APP) {
     const w = new ListWidget();
     w.setPadding(0, 0, 0, 0);
     w.backgroundImage = updRing(face(s));
+    w.url = URLScheme.forRunningScript(); // a tap runs this script (opens the full page), like every other widget
     w.refreshAfterDate = new Date(Date.now() + REFRESH_HOURS * 3600e3);
     if (config.runsInWidget) Script.setWidget(w); else await w.presentSmall();
   } catch (e) {
     const w = errorWidget(String(e.message || e));
+    w.url = URLScheme.forRunningScript();
     if (config.runsInWidget) Script.setWidget(w); else await w.presentSmall();
   }
 } else {
