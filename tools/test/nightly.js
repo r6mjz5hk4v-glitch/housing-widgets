@@ -86,12 +86,14 @@ const NOT_A_SOURCE = /raw\.githubusercontent\.com|cdnjs\.cloudflare\.com|cdn\.js
     // sites that never answered at all (DNS, refused, reset, timeout): couldn't check
     const dead = {};
     for (const e of r.fetchErrors || []) if (!NOT_A_SOURCE.test(e.url)) (dead[host(e.url)] = dead[host(e.url)] || []).push(e.err);
+    // refused (403) or rate-limited (429): the site is turning GitHub's servers away
+    for (const e of r.httpErrors || []) if ((e.status === 403 || e.status === 429) && !NOT_A_SOURCE.test(e.url)) (dead[host(e.url)] = dead[host(e.url)] || []).push(`HTTP ${e.status}`);
     for (const h of Object.keys(dead)) (unreachable[h] = unreachable[h] || new Set()).add(w);
     const blocked = Object.keys(dead).length > 0;
     if (r.status === "harness-error") { add("harness", `${w}: the nightly check itself broke`, r.err); continue; }
     if (r.status === "threw") add("crash", `${w} crashed`, String(r.err).split("\n").slice(0, 3).join("\n"));
     (r.pageErrors || []).forEach((e, i) => add(`page${i}`, `${w}: error in the full view`, e));
-    if (r.pdf && !r.pdf.ok) add("pdf", `${w}: Share as PDF failed`, r.pdf.err);
+    if (r.pdf && !r.pdf.ok && !blocked) add("pdf", `${w}: Share as PDF failed`, r.pdf.err);
     if (!r.presented) {
       const said = (r.alerts || [])[0] || "no message";
       // if its sites wouldn't answer, that's "couldn't check"; otherwise it's broken
@@ -99,8 +101,13 @@ const NOT_A_SOURCE = /raw\.githubusercontent\.com|cdnjs\.cloudflare\.com|cdn\.js
     }
     for (const e of savedErrors(r.store)) {
       // an error that's only "couldn't reach <site>" for a site that never answered: couldn't check
-      if (blocked && (/couldn'?t (?:reach|connect)|could not connect|offline|timed out/i.test(e.msg) || Object.keys(dead).some((h) => aboutHost(e.msg, h)))) continue;
-      add(`saved:${e.where.replace(/\[\d+\]/g, "")}`, `${w}: ${e.msg.split(":")[0].slice(0, 70)}`, `${e.msg}\n\n(saved as \`${e.where}\`)`);
+      if (blocked && (/couldn'?t (?:reach|connect)|could not connect|offline|timed out|HTTP (?:403|429)/i.test(e.msg) || Object.keys(dead).some((h) => aboutHost(e.msg, h)))) continue;
+      // one problem per kind of message, not per ticker or month: tickers, numbers and dates folded
+      const kind = e.msg.replace(/\b[A-Z]{1,5}\b/g, "#").replace(/\d[\d,.]*/g, "#").replace(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/g, "#").slice(0, 80);
+      const k = `saved:${kind.toLowerCase().replace(/[^a-z#]+/g, "-")}`;
+      const was = problems.find((p) => p.key === `${w}:${k}`);
+      if (was) { was.n = (was.n || 1) + 1; if (was.n <= 5) was.detail += `\n${e.msg}`; continue; }
+      add(k, `${w}: ${e.msg.replace(/\s+/g, " ").slice(0, 90)}`, `${e.msg}\n\n(saved as \`${e.where}\`)`);
     }
   }
   // one problem per key

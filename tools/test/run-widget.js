@@ -29,7 +29,7 @@ const NET = process.env.NET || "offline";
     face: rec.setWidget ? (rec.setWidget.backgroundImage && rec.setWidget.backgroundImage._face ? "drawn" : "text") : null,
     faceTexts: rec.faceTexts.slice(0, 40), widgetTexts: rec.setWidget ? (rec.setWidget.texts || []).filter((x) => typeof x === "string").slice(0, 10) : [],
     presented: rec.presented, mainPage: rec.pages.length > 0, pageErrors: rec.pageErrors.slice(0, 10), alerts: rec.alerts.slice(0, 10),
-    requests: rec.requests.length, fetchErrors: rec.fetchErrors.slice(0, 50), logs: logs.slice(-20), pdf: null, store: null,
+    requests: rec.requests.length, fetchErrors: rec.fetchErrors.slice(0, 50), httpErrors: rec.httpErrors.slice(0, 80), logs: logs.slice(-20), pdf: null, store: null,
   };
   // the full view: does Share as PDF still build?
   const main = rec.pages.find((p) => p.isMain);

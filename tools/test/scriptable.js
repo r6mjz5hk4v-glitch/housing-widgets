@@ -21,7 +21,7 @@ const LIBS = {
 
 function makeEnv(opts) {
   const { mode, net, browser, keychain, presentMs = 6000, log = () => {} } = opts;
-  const rec = { setWidget: null, widgetUrl: null, faceTexts: [], pages: [], pageErrors: [], alerts: [], requests: [], fetchErrors: [], presented: 0 };
+  const rec = { httpErrors: [], setWidget: null, widgetUrl: null, faceTexts: [], pages: [], pageErrors: [], alerts: [], requests: [], fetchErrors: [], presented: 0 };
   const any = new Proxy(function () {}, { get: (t, p) => (p === Symbol.toPrimitive ? () => "" : p === "then" ? undefined : p === "length" ? 0 : any), apply: () => any, construct: () => any });
 
   // ---- files: an in-memory documents folder ----
@@ -54,6 +54,7 @@ function makeEnv(opts) {
         const r = await fetch(u, { method: this.method, headers: this.headers, body: this.body == null ? undefined : (this.body._buf || this.body), redirect: "follow", signal: ctl.signal });
         const buf = Buffer.from(await r.arrayBuffer());
         this.response = { statusCode: r.status, headers: Object.fromEntries(r.headers.entries()), url: r.url };
+        if (r.status >= 400) rec.httpErrors.push({ url: u, status: r.status });
         return buf;
       } catch (e) {
         rec.fetchErrors.push({ url: u, err: String(e.cause && e.cause.code || e.message) });
@@ -155,7 +156,9 @@ function makeEnv(opts) {
     Rect: class { constructor(x, y, w, h) { Object.assign(this, { x, y, width: w, height: h, minX: x, minY: y, maxX: x + w, maxY: y + h }); } },
     Point: class { constructor(x, y) { this.x = x; this.y = y; } },
     LinearGradient: class { constructor() { this.colors = []; this.locations = []; } },
-    Timer: { schedule: (ms, rep, f) => { const t = (rep ? setInterval : setTimeout)(f, Math.min(ms, 200)); return { invalidate() { clearTimeout(t); clearInterval(t); } }; } },
+    // offline, timers run fast to keep the gate quick; live, they keep real time (a widget's
+    // own "took too long" limit must not fire early)
+    Timer: { schedule: (ms, rep, f) => { const t = (rep ? setInterval : setTimeout)(f, net === "live" ? ms : Math.min(ms, 200)); return { invalidate() { clearTimeout(t); clearInterval(t); } }; } },
     Script: { complete() {}, setWidget(w) { rec.setWidget = w; }, name: () => opts.name || "Widget", setShortcutOutput() {} },
     URLScheme: { forRunningScript: () => RUN_URL, forOpeningScript: () => RUN_URL.replace("/run/", "/open/") },
     Safari: { open() {}, openInApp: async () => {} },
