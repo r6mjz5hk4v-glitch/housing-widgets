@@ -78,8 +78,10 @@ function manifest() {
     execFileSync("python3", [path.join(ROOT, "tools/build_manifest.py")], { cwd: ROOT, stdio: "pipe" });
   } catch (e) { return [`build_manifest.py failed: ${String(e.stderr || e.message).trim().split("\n").pop()}`]; }
   const after = fs.readFileSync(file, "utf8");
-  if (after !== before) {
-    fs.writeFileSync(file, before); // leave the tree as it was
+  fs.writeFileSync(file, before); // leave the tree as it was
+  // the "updated" stamp is just the day it was built (and GitHub's clock is UTC): ignore it
+  const strip = (t) => { const j = JSON.parse(t); delete j.updated; return JSON.stringify(j); };
+  if (strip(after) !== strip(before)) {
     const a = JSON.parse(before), b = JSON.parse(after);
     const stale = b.files.filter((f) => { const o = a.files.find((x) => x.file === f.file); return !o || o.hash !== f.hash || JSON.stringify(o.notes) !== JSON.stringify(f.notes); }).map((f) => f.file);
     out.push(`manifest.json is out of date for ${stale.join(", ") || "some entries"}: run python3 tools/build_manifest.py`);
