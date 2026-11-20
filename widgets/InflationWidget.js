@@ -1161,20 +1161,24 @@ function face(s) {
   box(W - pad - bw, 28, bw, 44, 22, col);
   text(badge, W - pad - bw, 36, bw, 34, bs, "#1C1C1E", "heavy", "center");
   // the tiles: 2 rows of 4
-  const by = 92, gap = 10, tw = (W - 2 * pad - 3 * gap) / 4, th = 148;
+  const by = 90, gap = 10, tw = (W - 2 * pad - 3 * gap) / 4, th = 138;
   const tint = { "1": ["#FF9F0A", 0.18], "-1": ["#64D2FF", 0.16], "0": ["#2C2C2E", 1] };
   TILE_NAMES.forEach(([key, label], k) => {
     const x = pad + (k % 4) * (tw + gap), y = by + Math.floor(k / 4) * (th + gap);
     const sg = G.list.find((g) => g.key === key), d = sg ? String(sg.dir) : null;
     const [bg, a] = d ? tint[d] : ["#2C2C2E", 0.5];
     box(x, y, tw, th, 24, bg, a);
-    text(d ? ARROW[d] : "–", x, y + 22, tw, 62, 50, d ? (d === "0" ? "#AEAEB2" : DIRCOL[d]) : "#636366", "heavy", "center");
-    text(label, x, y + 92, tw, 36, 26, d ? "#F2F2F7" : "#8E8E93", "bold", "center");
+    text(d ? ARROW[d] : "–", x, y + 18, tw, 62, 50, d ? (d === "0" ? "#AEAEB2" : DIRCOL[d]) : "#636366", "heavy", "center");
+    text(label, x, y + 86, tw, 36, 26, d ? "#F2F2F7" : "#8E8E93", "bold", "center");
   });
-  // CPI now and what people expect over the next year
+  // CPI over the past year → what people expect over the next year (colored by that signal)
   const cpi = M.cpi ? M.cpi.v.toFixed(1) + "%" : "–", ex = G.list.find((x) => x.key === "exp");
-  text(`CPI ${cpi}`, pad + 6, 430, 230, 40, 29, "#FFFFFF", "bold");
-  text(`expected ${ex ? ex.value : "–"}`, W / 2 - 20, 434, W / 2 + 20 - pad - 6, 36, 23, "#8E8E93", "semi", "right");
+  const exCol = ex ? (String(ex.dir) === "0" ? "#AEAEB2" : DIRCOL[String(ex.dir)]) : "#8E8E93";
+  text(cpi, pad + 6, 408, 200, 40, 32, "#FFFFFF", "heavy");
+  text("past year", pad + 6, 446, 200, 28, 20, "#8E8E93", "semi");
+  text("→", W / 2 - 40, 408, 80, 40, 30, "#8E8E93", "bold", "center");
+  text(ex ? ex.value : "–", W / 2 + 40, 408, W / 2 - 40 - pad - 6, 40, 32, exCol, "heavy", "right");
+  text("next year", W / 2 + 40, 446, W / 2 - 40 - pad - 6, 28, 20, "#8E8E93", "semi", "right");
   return dc.getImage();
 }
 function errorWidget(msg) {

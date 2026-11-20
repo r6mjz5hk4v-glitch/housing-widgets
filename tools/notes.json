@@ -496,6 +496,10 @@
  "InflationWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "The bottom of the home-screen face now reads \"past year → next year\": CPI over the last 12 months, then what forecasters and consumers expect over the coming 12, colored by whether that's above or below today."
+  },
+  {
+   "d": "2026-11-19",
    "t": "New home-screen face: the verdict as a colored badge, then all 8 signals as tiles (orange up, blue down, gray steady) with short names, and CPI vs. expected at the bottom. Tapping still opens the full page."
   },
   {

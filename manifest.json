@@ -495,8 +495,12 @@
     "fred"
    ],
    "sig": "// Inflation Expectations Widget for Scriptable (small widget)",
-   "hash": "e38bde1d",
+   "hash": "c005780f",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "The bottom of the home-screen face now reads \"past year → next year\": CPI over the last 12 months, then what forecasters and consumers expect over the coming 12, colored by whether that's above or below today."
+    },
     {
      "d": "2026-11-19",
      "t": "New home-screen face: the verdict as a colored badge, then all 8 signals as tiles (orange up, blue down, gray steady) with short names, and CPI vs. expected at the bottom. Tapping still opens the full page."
@@ -504,10 +508,6 @@
     {
      "d": "2026-11-19",
      "t": "Tapping the widget right after closing it now opens Inflation every time, instead of sometimes landing on Scriptable's script list. Closing the view stops the slow downloads; whatever didn't finish catches up on the next open."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "A Fed calendar at the top (next FOMC meetings, minutes, Board speeches, in Central time). Open \"What people expect\" to see each group, with chips to hide them, plus forecasts running past Today: economists, Fannie Mae, the market model and the Fed's projections."
     }
    ]
   },
