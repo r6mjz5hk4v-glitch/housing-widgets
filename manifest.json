@@ -223,8 +223,12 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "9df0b97",
+   "hash": "7b944863",
    "notes": [
+    {
+     "d": "2026-11-19",
+     "t": "When ElevenLabs won't record with a voice, Listen now shows ElevenLabs' actual reason and offers to go back to your previous voice, pick another, or use the iPhone voice, instead of wrongly saying your key didn't work. It only asks for a new key when ElevenLabs says the key itself is bad."
+    },
     {
      "d": "2026-11-19",
      "t": "If no prices can be loaded at all, it now says so (with why) instead of sitting on \"Loading prices\". Lifting the last finger after pinching the heatmap no longer counts as a tap."
@@ -232,10 +236,6 @@
     {
      "d": "2026-11-18",
      "t": "Steadier Listen recordings: shorter pieces joined smoothly and steadier voice settings, to stop the voice drifting into a whisper. Page headers and page numbers are no longer read aloud. Calls you already recorded still play free."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "Past calls you've already recorded with ElevenLabs show a green \"Recorded\" tag (or \"Partly recorded\"), so you can see where credits went. Those play free."
     }
    ]
   },

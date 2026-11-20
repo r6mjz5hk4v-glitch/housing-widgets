@@ -1397,8 +1397,12 @@ async function listenRemarks(s, t, at, tr, say) {
       const ctx = { prev: k > 0 ? pieces[k - 1].slice(-400) : "", next: k < pieces.length - 1 ? pieces[k + 1].slice(0, 300) : "", prevIds: todo.indexOf(k - 1) >= 0 ? ids.slice() : [] };
       try { fm().write(piecePath(k), await elevenLabs(pieces[k], key, voice.id, model.id, ctx)); if (ctx.lastId) ids.push(ctx.lastId); } catch (e) {
         if (pr) await pr.stop();
-        if (keyProblem(e)) { await askKey(true); return; }
-        if (!outOfCredits(e)) throw e;
+        if (keyProblem(e)) { await askKey(true, e); return; }
+        if (!outOfCredits(e)) {
+          // refused for another reason (often the voice itself): say what ElevenLabs said, offer a way out
+          if (e.code >= 400 && e.code < 500) return voiceRefused(s, t, at, tr, say, voice, e, text);
+          throw e;
+        }
         // out partway: play what was made (pieces stay saved; the next Listen records only the rest)
         const made = pieces.map((x, n) => n).filter((n) => fm().fileExists(piecePath(n)));
         if (!made.length || made[0] !== 0) return creditsAlert(e, text, need);
@@ -1529,14 +1533,16 @@ async function voiceMenu(s) {
   if (i >= 0) await opts[i][1]();
 }
 // ok askKey
-async function askKey(again) {
+async function askKey(again, why) {
   if (ELEVENLABS_KEY.trim()) {
     if (again) throw new Error("ElevenLabs rejected the key pasted at the top of the script. Check it was copied in full, between the quotes.");
     return ELEVENLABS_KEY.trim();
   }
   const a = new Alert();
   a.title = again ? "That key didn't work" : "ElevenLabs API key";
-  a.message = "Paste your ElevenLabs API key (for Listen). It's saved in this phone's keychain, stays there when you update the script, and is only sent to ElevenLabs. Cancel to skip for now.";
+  const saved = Keychain.contains(KEY_NAME) ? Keychain.get(KEY_NAME) || "" : "";
+  a.message = (again && why ? `ElevenLabs said ${why.code}${why.detail ? ": " + why.detail : ""}${saved ? " (saved key ends in " + saved.slice(-4) + ")" : ""}.\n\n` : "") +
+    "Paste your ElevenLabs API key (for Listen); it starts with sk_. It's saved in this phone's keychain, stays there when you update the script, and is only sent to ElevenLabs. Cancel to skip for now.";
   a.addSecureTextField("API key", "");
   a.addAction("Save");
   a.addCancelAction("Cancel");
@@ -1634,6 +1640,7 @@ async function chooseVoice(s, key) {
     picked = await pasteVoiceId("Couldn't list your voices (the key may not have Voices read access).");
   }
   if (picked) {
+    if (s.voice && s.voice.id !== picked.id) s.prevVoice = s.voice; // to go back to if ElevenLabs won't use the new one
     s.voice = picked;
     s.voicePicked = true;
     saveStore(s);
@@ -1674,7 +1681,32 @@ async function creditsAlert(e, text, need) {
 }
 // ok keyProblem
 function keyProblem(e) {
-  return e.code === 401 && !outOfCredits(e) && !/character|unusual|permission|limit/i.test(e.message || "");
+  const said = `${e.status || ""} ${e.detail || e.message || ""}`;
+  return (e.code === 401 || e.code === 400) && !outOfCredits(e) && /invalid_api_key|invalid api key|api key id|only valid api keys|api key (is )?(invalid|not valid)|needs_authorization/i.test(said) && !/permission/i.test(said);
+}
+// ElevenLabs turned down a recording for a reason other than the key or credits
+// (a voice the plan or the voice's owner doesn't allow through the API, say)
+async function voiceRefused(s, t, at, tr, say, voice, e, text) {
+  const prev = s.prevVoice && s.prevVoice.id !== voice.id ? s.prevVoice : null;
+  const back = prev ? prev.name : VOICE_NAME;
+  const a = new Alert();
+  a.title = `ElevenLabs wouldn't record with ${voice.name}`;
+  const perm = /permission/i.test(`${e.status || ""} ${e.detail || e.message || ""}`);
+  a.message = `ElevenLabs said ${e.code}${e.detail ? ": " + e.detail : ""}\n\n` + (perm
+    ? "Your key works but isn't allowed to do this: at elevenlabs.io, API Keys, turn on Text to Speech for it."
+    : "Your key works; this is about the voice or your plan.") + " Nothing was charged.";
+  a.addAction(`Go back to ${back}`);
+  a.addAction("Pick another voice");
+  a.addAction("Read it with the iPhone voice");
+  a.addCancelAction("Cancel");
+  const pick = await a.present();
+  if (pick === 0) {
+    if (prev) { s.voice = prev; s.voicePicked = true; } else { s.voice = null; s.voicePicked = false; }
+    s.prevVoice = null; saveStore(s);
+    return listenRemarks(s, t, at, tr, say);
+  }
+  if (pick === 1) { const k = await getKey(); if (k && (await chooseVoice(s, k))) return listenRemarks(s, t, at, tr, say); return; }
+  if (pick === 2) await Speech.speak(text);
 }
 // ok capText
 function capText(text) {

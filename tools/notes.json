@@ -148,6 +148,10 @@
  "BuilderStocksWidget.js": [
   {
    "d": "2026-11-19",
+   "t": "When ElevenLabs won't record with a voice, Listen now shows ElevenLabs' actual reason and offers to go back to your previous voice, pick another, or use the iPhone voice, instead of wrongly saying your key didn't work. It only asks for a new key when ElevenLabs says the key itself is bad."
+  },
+  {
+   "d": "2026-11-19",
    "t": "If no prices can be loaded at all, it now says so (with why) instead of sitting on \"Loading prices\". Lifting the last finger after pinching the heatmap no longer counts as a tap."
   },
   {
