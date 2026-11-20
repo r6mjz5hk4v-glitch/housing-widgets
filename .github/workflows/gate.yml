@@ -1,0 +1,93 @@
+# The gate: changes are pushed to "staging"; this runs tools/test on them and, only if
+# everything passes, moves main (where Installer looks) up to the same commit.
+# A failure opens (or updates) one GitHub issue; the next passing run closes it.
+name: Gate (staging → main)
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: gate
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install test tools
+        working-directory: tools/test
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Run the checks
+        id: tests
+        working-directory: tools/test
+        run: node run-all.js
+        continue-on-error: true
+
+      - name: Show the results on the run page
+        if: always()
+        run: cat tools/test/out/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Keep screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-results
+          path: tools/test/out
+          retention-days: 14
+
+      - name: Move main up to this commit
+        id: promote
+        if: steps.tests.outcome == 'success'
+        run: |
+          # fast-forward only: if main has commits staging doesn't, this refuses
+          if git push origin "${GITHUB_SHA}:refs/heads/main"; then
+            echo "moved=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "moved=no" >> "$GITHUB_OUTPUT"
+            echo "main has commits that staging doesn't; merge main into staging and push again" >> tools/test/out/summary.md
+          fi
+
+      - name: Open, update or close the gate issue
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          PASSED: ${{ steps.tests.outcome == 'success' && steps.promote.outputs.moved == 'yes' }}
+        with:
+          script: |
+            const fs = require("fs");
+            const title = "Gate: a change was held back from main";
+            const summary = fs.existsSync("tools/test/out/summary.md") ? fs.readFileSync("tools/test/out/summary.md", "utf8") : "No summary was written; see the run log.";
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const sha = context.sha.slice(0, 7);
+            const { data: open } = await github.rest.issues.listForRepo({ ...context.repo, state: "open", per_page: 100 });
+            const mine = open.find((i) => i.title === title && !i.pull_request);
+            if (process.env.PASSED === "true") {
+              if (mine) {
+                await github.rest.issues.createComment({ ...context.repo, issue_number: mine.number, body: `Fixed: commit ${sha} passed and is now on main. Phones can update with Installer. ([run](${run}))` });
+                await github.rest.issues.update({ ...context.repo, issue_number: mine.number, state: "closed" });
+              }
+              return;
+            }
+            const body = `Commit **${sha}** on staging didn't pass, so main (and phones) still have the last good version.\n\n[Run details and screenshots](${run})\n\n${summary}`.slice(0, 60000);
+            if (mine) await github.rest.issues.createComment({ ...context.repo, issue_number: mine.number, body });
+            else await github.rest.issues.create({ ...context.repo, title, body });
+            core.setFailed("held back from main");

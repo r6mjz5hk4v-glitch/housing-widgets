@@ -1,0 +1,101 @@
+# Nightly at about 2am Central: open every widget against the live internet and file one
+# GitHub issue per broken source (closed automatically when it recovers), plus one issue
+# listing sites that wouldn't answer GitHub's servers. FRED is made up (no key here).
+name: Nightly source check
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # 08:00 UTC = 2am CST (3am during daylight time)
+  workflow_dispatch:
+  push:
+    branches: [staging]
+    paths:
+      - "tools/test/nightly.js"
+      - ".github/workflows/nightly.yml"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install test tools
+        working-directory: tools/test
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Open every widget against the live internet
+        working-directory: tools/test
+        run: node nightly.js
+
+      - name: Show the results on the run page
+        if: always()
+        run: cat tools/test/out/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Keep screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-results
+          path: tools/test/out
+          retention-days: 14
+
+      - name: File, update or close issues
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const f = "tools/test/out/nightly.json";
+            if (!fs.existsSync(f)) { core.setFailed("the nightly check didn't write results"); return; }
+            const N = JSON.parse(fs.readFileSync(f, "utf8"));
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const day = new Date().toLocaleDateString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric" });
+            const tag = (k) => `<!-- nightly:${k} -->`;
+            const open = await github.paginate(github.rest.issues.listForRepo, { ...context.repo, state: "open", per_page: 100 });
+            const mine = open.filter((i) => !i.pull_request && /<!-- nightly:/.test(i.body || ""));
+            const keyOf = (i) => ((i.body || "").match(/<!-- nightly:(.*?) -->/) || [])[1];
+            // broken sources: one issue each
+            const now = new Set();
+            for (const p of N.problems) {
+              now.add(p.key);
+              const was = mine.find((i) => keyOf(i) === p.key);
+              const body = `${tag(p.key)}\n**${p.title}**\n\n\`\`\`\n${p.detail.slice(0, 3000)}\n\`\`\`\n\nFirst seen in the nightly check on ${day}. [Run details](${run})\n\nThis closes by itself the first night it works again.`;
+              if (was) await github.rest.issues.createComment({ ...context.repo, issue_number: was.number, body: `Still broken on ${day}. [Run](${run})` });
+              else await github.rest.issues.create({ ...context.repo, title: `Nightly: ${p.title}`.slice(0, 200), body });
+            }
+            // sites that didn't answer: one rolling issue
+            const un = Object.entries(N.unreachable || {});
+            const UK = "unreachable";
+            now.add(UK);
+            const wasUn = mine.find((i) => keyOf(i) === UK);
+            if (un.length) {
+              const list = un.map(([h, ws]) => `- ${h} (${ws.join(", ")})`).join("\n");
+              const body = `${tag(UK)}\nThese sites didn't answer GitHub's servers on ${day}, so the nightly check couldn't test them. That's usually the site blocking cloud servers, not a problem on your phone.\n\n${list}\n\n[Run details](${run})`;
+              if (wasUn) await github.rest.issues.update({ ...context.repo, issue_number: wasUn.number, body });
+              else await github.rest.issues.create({ ...context.repo, title: "Nightly: sites that couldn't be checked", body });
+            }
+            // anything that's fine tonight: close it (only for widgets that ran)
+            for (const i of mine) {
+              const k = keyOf(i);
+              if (now.has(k) && !(k === UK && !un.length)) continue;
+              const w = k.split(":")[0];
+              if (k !== UK && !N.widgets.some((x) => x.replace(/Widget\.js$|\.js$/, "") === w)) continue;
+              await github.rest.issues.createComment({ ...context.repo, issue_number: i.number, body: `Working again on ${day}. [Run](${run})` });
+              await github.rest.issues.update({ ...context.repo, issue_number: i.number, state: "closed" });
+            }
