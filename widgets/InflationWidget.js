@@ -200,11 +200,19 @@ const mIdx = (k) => { const [y, m] = k.split("-").map(Number); return y * 12 + m
 const mStr = (i) => mKey(Math.floor(i / 12), i % 12);
 const mLabel = (k) => `${MON3[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}`;
 
+// a request whose failure says which site answered and how (for the schedule's Fix panel)
+async function loadJsonFrom(u, secs) {
+  const r = new Request(u), host = u.split("/")[2];
+  r.timeoutInterval = secs || 20;
+  let j;
+  try { j = await r.loadJSON(); } catch (e) { throw new Error(`couldn't reach ${host} (${String((e && e.message) || e).slice(0, 60)})`); }
+  const code = (r.response && r.response.statusCode) || 0;
+  if (code >= 400) throw new Error(`${host} answered HTTP ${code}${j && j.error_message ? ": " + j.error_message : ""}`);
+  return j;
+}
 async function fredRaw(id) {
-  const r = new Request(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${FRED_KEY}&file_type=json&observation_start=${START}`);
-  r.timeoutInterval = 20;
-  const j = await r.loadJSON();
-  if (!j || !j.observations) throw new Error((j && j.error_message) || `no data for ${id}`);
+  const j = await loadJsonFrom(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${FRED_KEY}&file_type=json&observation_start=${START}`);
+  if (!j || !j.observations) throw new Error(`FRED: ${(j && j.error_message) || "no data"} for ${id}`);
   return j.observations.filter((o) => o.value !== ".");
 }
 // a monthly series as { "YYYY-MM": value }
@@ -241,8 +249,8 @@ async function getText(urls, ua) {
       const t = await r.loadString();
       const code = (r.response && r.response.statusCode) || 0;
       if (code === 200 && t) return t;
-      last = new Error(`${code} from ${u.split("/")[2]}`);
-    } catch (e) { last = e; }
+      last = new Error(`${u.split("/")[2]} answered HTTP ${code}`);
+    } catch (e) { last = new Error(`couldn't reach ${u.split("/")[2]} (${String((e && e.message) || e).slice(0, 60)})`); }
   }
   throw last || new Error("couldn't load");
 }
@@ -256,8 +264,8 @@ async function getData(urls) {
       const d = await r.load();
       const code = (r.response && r.response.statusCode) || 0;
       if (code === 200 && d) return d;
-      last = new Error(`${code} from ${u.split("/")[2]}`);
-    } catch (e) { last = e; }
+      last = new Error(`${u.split("/")[2]} answered HTTP ${code}`);
+    } catch (e) { last = new Error(`couldn't reach ${u.split("/")[2]} (${String((e && e.message) || e).slice(0, 60)})`); }
   }
   throw last || new Error("couldn't load");
 }
@@ -428,10 +436,8 @@ const ZORI_CSV = [
 ];
 // daily and weekly series as monthly averages (the current month is month to date)
 async function fredMonthlyAvg(id) {
-  const r = new Request(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${FRED_KEY}&file_type=json&observation_start=${START}&frequency=m&aggregation_method=avg`);
-  r.timeoutInterval = 20;
-  const j = await r.loadJSON();
-  if (!j || !j.observations) throw new Error((j && j.error_message) || `no data for ${id}`);
+  const j = await loadJsonFrom(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${FRED_KEY}&file_type=json&observation_start=${START}&frequency=m&aggregation_method=avg`);
+  if (!j || !j.observations) throw new Error(`FRED: ${(j && j.error_message) || "no data"} for ${id}`);
   const out = {};
   for (const o of j.observations) if (o.value !== ".") out[o.date.slice(0, 7)] = +o.value;
   return out;
@@ -793,16 +799,20 @@ async function releaseDates(seriesId) {
   } catch (e) { return []; }
 }
 // Refresh what can be refreshed. In the widget (no hidden pages there) the Excel sources keep their saved copy.
+async function runStep(s, key, fn, say, label) {
+  try {
+    if (say) await say(`Updating ${label}…`);
+    s[key] = await fn();
+    s.src[key] = { at: Date.now(), tried: Date.now(), err: null };
+    return null;
+  } catch (e) {
+    const err = String((e && e.message) || e).slice(0, 160);
+    s.src[key] = { at: (s.src[key] && s.src[key].at) || 0, tried: Date.now(), err };
+    return err;
+  }
+}
 async function refresh(s, inApp, say, live) {
-  const step = async (key, label, fn) => {
-    try {
-      if (say) await say(`Updating ${label}…`);
-      s[key] = await fn();
-      s.src[key] = { at: Date.now(), tried: Date.now(), err: null };
-    } catch (e) {
-      s.src[key] = { at: (s.src[key] && s.src[key].at) || 0, tried: Date.now(), err: String((e && e.message) || e).slice(0, 120) };
-    }
-  };
+  const step = (key, label, fn) => runStep(s, key, fn, say, label);
   await Promise.all([
     step("actual", "CPI and PCE", getActual),
     step("clev", "Cleveland Fed", getCleveland),
@@ -885,6 +895,26 @@ function todayCT() { try { const p = new Date().toLocaleDateString("en-US", { ti
 function daysBetween(a, b) { return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 864e5); }
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
+// each schedule row: the refresh step that loads it, and the publisher's page to check
+const FIX_SRC = {
+  cpi: { step: "actual", page: "https://fred.stlouisfed.org/series/CPIAUCSL" },
+  pce: { step: "actual", page: "https://fred.stlouisfed.org/series/PCEPI" },
+  umich: { step: "umich", page: "https://www.sca.isr.umich.edu/" },
+  sce: { step: "sce", page: "https://www.newyorkfed.org/microeconomics/sce" },
+  clev: { step: "clev", page: "https://fred.stlouisfed.org/series/EXPINF1YR" },
+  spf: { step: "spf", page: "https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/survey-of-professional-forecasters" },
+  fomc: { step: "fomc", page: "https://fred.stlouisfed.org/series/PCECTPIMD" },
+  emp: { step: "wages", page: "https://fred.stlouisfed.org/series/CES0500000003" },
+  eci: { step: "wages", page: "https://fred.stlouisfed.org/series/ECIWAG" },
+  atl: { step: "wages", page: "https://www.atlantafed.org/chcs/wage-growth-tracker" },
+  ppi: { step: "pipe", page: "https://fred.stlouisfed.org/series/PPIFIS" },
+  imp: { step: "pipe", page: "https://fred.stlouisfed.org/series/IR" },
+  energy: { step: "energy", page: "https://fred.stlouisfed.org/series/DCOILWTICO" },
+  gscpi: { step: "gscpi", page: "https://www.newyorkfed.org/research/policy/gscpi" },
+  zori: { step: "zori", page: "https://www.zillow.com/research/data/" },
+};
+const STEP_FN = () => ({ actual: getActual, clev: getCleveland, fomc: getFomc, umich: getUmich, wages: getWages, energy: getEnergy, pipe: getPipe,
+  shelter: getShelter, clevPath: getClevPath, sce: getSce, spf: getSpf, gscpi: getGscpi, zori: getZori, fannie: getFannie, fedcal: getFedCal });
 function schedule(s) {
   const today = todayCT(), M = model(s), rows = [];
   const why = (key, extra) => {
@@ -973,6 +1003,13 @@ function schedule(s) {
   if (zr) { const n = mIdx(zr) + 2, f = `${Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, "0")}-10`; rows.push(approx("zori", "zori", "New-lease rents (Zillow)", "monthly", zr, f, addDays(f, 10), "", "(checked only when you open this view)")); }
   else rows.push({ key: "zori", name: "New-lease rents (Zillow)", every: "monthly", last: "–", main: "not loaded", sub: "", late: true, why: why("zori", "(checked only when you open this view)"), sort: "0" });
 
+  // late or failed rows get a Fix panel: what to retry, where to look
+  rows.forEach((r) => {
+    const f = FIX_SRC[r.key];
+    if (!f || !r.late) return;
+    const st = s.src[f.step] || {};
+    r.fix = { step: f.step, page: f.page, tried: st.tried || null, at: st.at || null, err: st.err || null };
+  });
   // late ones first, then by next date
   rows.sort((a, b) => (b.late - a.late) || (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0));
   return rows;
@@ -1247,6 +1284,16 @@ const PAGE_HTML = `<!DOCTYPE html>
   .name { color:#C7C7CC; font-size:15px; font-weight:600; margin-top:2px; }
   .hint { color:var(--gray); font-size:12px; margin-top:4px; min-height:15px; line-height:1.4; }
   #sched { margin:12px 0 4px; border:1px solid #2C2C2E; border-radius:12px; padding:8px 10px 6px; background:#232325; }
+  .fixBtn { display:inline-block; margin-top:5px; font:inherit; font-size:11.5px; font-weight:600; color:#FF9F0A; background:rgba(255,159,10,0.14); border:none; border-radius:8px; padding:4px 10px; }
+  .fixPanel { margin:2px 0 8px; padding:9px 10px; border-radius:10px; background:#1C1C1E; border:1px solid #3A3A3C; font-size:11.5px; color:#C7C7CC; line-height:1.4; }
+  .fixPanel b { color:#E5E5EA; font-weight:600; }
+  .fixPanel .err { color:#FF9F0A; word-break:break-word; }
+  .fixActs { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .fixActs button { flex:1 1 auto; font:inherit; font-size:12px; font-weight:600; color:#E5E5EA; background:#2C2C2E; border:none; border-radius:9px; padding:8px 8px; min-height:34px; }
+  .fixActs button.primary { color:#1C1C1E; background:#FF9F0A; }
+  .fixActs button:disabled { opacity:0.5; }
+  .fixMsg { margin-top:7px; color:#98989F; }
+  .fixMsg.ok { color:#30D158; } .fixMsg.bad { color:#FF9F0A; }
   .schedHead { display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; margin-bottom:3px; }
   .schedHead span { color:#8E8E93; font-size:10.5px; }
   .schedRow { display:flex; gap:8px; align-items:baseline; font-size:12px; padding:4px 0; border-top:1px solid #2C2C2E; }
@@ -1489,12 +1536,74 @@ function renderSched(rows, all) {
     show.map(function (r) {
       var cls = r.late || r.due ? "late" : "";
       return '<div class="schedRow"><span class="schedName">' + esc(r.name) + (r.every ? "<i>" + esc(r.every) + "</i>" : "") + (r.late && r.why ? '<i class="why">' + esc(r.why) + "</i>" : "") +
-        '</span><span class="schedLast">' + esc(r.last) + '</span><span class="schedNext"><span class="' + cls + '">' + esc(r.main) + "</span>" + (r.sub ? "<i>" + esc(r.sub) + "</i>" : "") + "</span></div>";
+        (r.fix ? '<button class="fixBtn" data-fix="' + esc(r.key) + '">' + (FIXOPEN[r.key] ? "Close ‹" : "Fix ›") + "</button>" : "") +
+        '</span><span class="schedLast">' + esc(r.last) + '</span><span class="schedNext"><span class="' + cls + '">' + esc(r.main) + "</span>" + (r.sub ? "<i>" + esc(r.sub) + "</i>" : "") + "</span></div>" +
+        (r.fix && FIXOPEN[r.key] ? fixPanel(r) : "");
     }).join("") +
     (rows.length > show.length || all ? '<div class="schedMore" id="schedMore">' + (all ? "Show fewer" : "All " + rows.length + " sources") + "</div>" : "");
   var mo = el("schedMore");
   if (mo) mo.onclick = function () { renderSched(D.sched, !all); };
+  SCHED_ALL = all;
+  Array.prototype.forEach.call(box.querySelectorAll("[data-fix]"), function (b) {
+    b.onclick = function () { var k = b.getAttribute("data-fix"); FIXOPEN[k] = !FIXOPEN[k]; renderSched(D.sched, all); };
+  });
+  Array.prototype.forEach.call(box.querySelectorAll("[data-fixact]"), function (b) {
+    b.onclick = function () { fixAct(b.getAttribute("data-fixkey"), b.getAttribute("data-fixact")); };
+  });
 }
+// ---- the Fix panel: details, Retry now, Open the source, Copy report for Claude
+var FIXOPEN = {}, FIXMSG = {}, FIXBUSY = {}, SCHED_ALL = false;
+function ctTime(ms) {
+  if (!ms) return "never";
+  try { return new Date(ms).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " CT"; }
+  catch (e) { return new Date(ms).toString(); }
+}
+function hostOf(u) { var m = String(u || "").match(/^https:..([^/]+)/); return m ? m[1] : ""; }
+function fixRow(k) { return (D.sched || []).filter(function (r) { return r.key === k; })[0]; }
+function fixPanel(r) {
+  var f = r.fix, m = FIXMSG[r.key], busy = FIXBUSY[r.key];
+  return '<div class="fixPanel">' +
+    "<div><b>Last checked:</b> " + esc(ctTime(f.tried)) + "</div>" +
+    "<div><b>Last good download:</b> " + esc(ctTime(f.at)) + "</div>" +
+    (f.err ? '<div><b>Error:</b> <span class="err">' + esc(f.err) + "</span></div>" : "<div><b>Error:</b> none; the site answered, but the new release isn't in its file yet.</div>") +
+    "<div><b>Source:</b> " + esc(hostOf(f.page)) + "</div>" +
+    '<div class="fixActs"><button class="primary" data-fixkey="' + esc(r.key) + '" data-fixact="retry"' + (busy ? " disabled" : "") + ">" + (busy ? "Retrying…" : "Retry now") + "</button>" +
+    '<button data-fixkey="' + esc(r.key) + '" data-fixact="open">Open the source</button>' +
+    '<button data-fixkey="' + esc(r.key) + '" data-fixact="copy">Copy report for Claude</button></div>' +
+    (m ? '<div class="fixMsg ' + (m.ok ? "ok" : "bad") + '">' + esc(m.msg) + "</div>" : "") + "</div>";
+}
+function fixReport(r) {
+  var f = r.fix, NL = String.fromCharCode(10);
+  return ["Housing Widgets · Inflation: source not coming through",
+    "Source: " + r.name + " (" + r.key + ", step " + f.step + ")",
+    "Status: " + r.main + (r.sub ? ", " + r.sub : ""),
+    "Latest data shown: " + r.last,
+    "Last checked: " + ctTime(f.tried),
+    "Last good download: " + ctTime(f.at),
+    "Error: " + (f.err || "none (site answered; release not in the file yet)"),
+    "Why shown: " + (r.why || ""),
+    "Source page: " + f.page,
+    "Report made: " + ctTime(Date.now())].join(NL);
+}
+function fixAct(k, act) {
+  var r = fixRow(k);
+  if (!r || !r.fix) return;
+  if (act === "open") { window.__openUrl = r.fix.page; return; }
+  if (act === "retry") { FIXBUSY[k] = true; FIXMSG[k] = null; window.__fixReq = { key: k, action: "retry", step: r.fix.step }; }
+  if (act === "copy") window.__fixReq = { key: k, action: "copy", text: fixReport(r) };
+  renderSched(D.sched, SCHED_ALL);
+}
+window.__takeFix = function () { var q = window.__fixReq; window.__fixReq = null; return q ? JSON.stringify(q) : null; };
+window.fixDone = function (res) {
+  if (!res || !res.key) return;
+  FIXBUSY[res.key] = false;
+  FIXMSG[res.key] = { ok: res.ok, msg: res.msg };
+  // the row may be healthy now: keep the message showing on it if it still has a panel
+  if (!fixRow(res.key) || !fixRow(res.key).fix) { FIXOPEN[res.key] = false; }
+  renderSched(D.sched, SCHED_ALL);
+  if (!fixRow(res.key) || !fixRow(res.key).fix) setStatusMsg(res.msg);
+};
+function setStatusMsg(t) { if (window.setStatus) { window.setStatus(t); setTimeout(function () { window.setStatus(""); }, 6000); } }
 // the details: every source in plain words
 function renderTables() {
   var f = D.fomc || {};
@@ -1546,7 +1655,7 @@ function renderFed() {
 function renderSegs() { Array.prototype.forEach.call(document.querySelectorAll("#segs span[data-r]"), function (s) { s.className = !VIEW && +s.getAttribute("data-r") === PRESET ? "on" : ""; }); }
 function renderAll() {
   renderFed();
-  renderSched(D.sched, false);
+  renderSched(D.sched, SCHED_ALL);
   renderVerdict();
   renderSegs();
   drawCharts();
@@ -2114,6 +2223,7 @@ async function handleShare(req) {
 
 // While the full-screen view is open, pick up Share taps from the page.
 // Anything that can't be shown over the open view is shared once it closes.
+let FIX_HANDLER = null;
 async function sharePoller(wv, isOpen) {
   const later = [];
   while (isOpen()) {
@@ -2131,6 +2241,15 @@ async function sharePoller(wv, isOpen) {
       } catch (e) {
         try { Safari.open(url); } catch (e2) {}
       }
+      continue;
+    }
+    // the release schedule's Fix panel: Retry now / Copy report
+    let fx = null;
+    try { fx = await wv.evaluateJavaScript("window.__takeFix ? window.__takeFix() : null"); } catch (e) {}
+    if (fx && FIX_HANDLER) {
+      let res;
+      try { res = await FIX_HANDLER(JSON.parse(fx)); } catch (e) { res = { ok: false, msg: String((e && e.message) || e) }; }
+      try { await wv.evaluateJavaScript(`window.fixDone && window.fixDone(${JSON.stringify(res)});0`); } catch (e) {}
       continue;
     }
     let raw = null;
@@ -2189,6 +2308,16 @@ async function openApp() {
     const live = () => isOpen() && stillMine(me);
     const say = async (t) => { try { if (live()) await wv.evaluateJavaScript(`window.setStatus && window.setStatus(${JSON.stringify(t)});0`); } catch (e) {} };
     const push = async () => { try { if (live()) await wv.evaluateJavaScript(`window.update && window.update(${JSON.stringify(payload(s))});0`); } catch (e) {} };
+    FIX_HANDLER = async (req) => {
+      if (req.action === "copy") { Pasteboard.copyString(String(req.text || "")); return { key: req.key, ok: true, msg: "Copied. Paste it to Claude." }; }
+      if (req.action !== "retry") return { key: req.key, ok: false, msg: "Unknown request" };
+      const fn = STEP_FN()[req.step];
+      if (!fn) return { key: req.key, ok: false, msg: "Nothing to retry for this source" };
+      const err = await runStep(s, req.step, fn);
+      saveStore(s);
+      await push();
+      return { key: req.key, ok: !err, msg: err ? `Still failing: ${err}` : "Downloaded. If the row is still orange, the new release isn't out yet." };
+    };
     // Black-screen guard: the page says when it has drawn. If it hasn't (or the
     // page stopped answering), load it again, twice at most. Downloads wait for it.
     for (let k = 0; k < 3 && isOpen(); k++) {
