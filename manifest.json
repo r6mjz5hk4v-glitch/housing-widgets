@@ -48,8 +48,12 @@
     "fred"
    ],
    "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "b594d000",
+   "hash": "68eade7c",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -57,10 +61,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -73,8 +73,12 @@
     "fred"
    ],
    "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate",
-   "hash": "b7fc8dbc",
+   "hash": "f456b536",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -82,10 +86,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -98,8 +98,12 @@
     "fred"
    ],
    "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "b82e2bf5",
+   "hash": "7afc0c45",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -107,10 +111,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -123,8 +123,12 @@
     "fred"
    ],
    "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "85a1cd75",
+   "hash": "f0454501",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -132,10 +136,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -148,8 +148,12 @@
     "fred"
    ],
    "sig": "// Rate Lock-In for Scriptable",
-   "hash": "32a9af64",
+   "hash": "7a171778",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -157,10 +161,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -173,8 +173,12 @@
     "fred"
    ],
    "sig": "// New Construction for Scriptable",
-   "hash": "33322092",
+   "hash": "474a4388",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -182,10 +186,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -198,8 +198,12 @@
     "fred"
    ],
    "sig": "// Builder Inputs for Scriptable",
-   "hash": "81250e5e",
+   "hash": "e3b2a876",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -207,10 +211,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -248,8 +248,12 @@
     "fred"
    ],
    "sig": "// Existing Homes for Scriptable",
-   "hash": "2bcc734d",
+   "hash": "c3776953",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -257,10 +261,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -322,8 +322,12 @@
     "metro"
    ],
    "sig": "// Payment vs N Years Ago for Scriptable",
-   "hash": "3322eaf0",
+   "hash": "b2124ce",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -331,10 +335,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -395,8 +395,12 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "6e5ee849",
+   "hash": "32612d7d",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Dropped the Applications rejected survey chart. In Share as PDF, Where late mortgages go now gets its own full-width second slide, with a headline that gives the latest caught-up and rolled-to-90+ shares."
@@ -404,10 +408,6 @@
     {
      "d": "2026-11-19",
      "t": "The FHA chart is now \"Mortgage serious delinquency by loan type\": FHA vs Fannie Mae vs Freddie Mac, without the 30- and 60-day lines. In Share as PDF it sits on page 1 next to Going seriously delinquent, and Where late mortgages go now shares a slide with Rejections."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "Fixed the Fannie Mae and Freddie Mac lines on the FHA delinquency chart: each report now fills in 13 months, so both lines rebuild back to 2015 over about two opens. If either site blocks the download, you'll see it in orange instead of a missing line."
     }
    ]
   },
@@ -420,8 +420,12 @@
     "fred"
    ],
    "sig": "// Personal Saving Rate Widget for Scriptable (small widget)",
-   "hash": "b2348342",
+   "hash": "40af5f10",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -429,10 +433,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -445,8 +445,12 @@
     "fred"
    ],
    "sig": "// Consumer Sentiment Widget for Scriptable (small widget)",
-   "hash": "82534768",
+   "hash": "f5da576c",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -454,10 +458,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -470,8 +470,12 @@
     "fred"
    ],
    "sig": "// Unemployment Rate Widget for Scriptable (small widget)",
-   "hash": "322b7e97",
+   "hash": "d3095d0f",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-19",
      "t": "Calmer Layoffs chart: the news line is now a 13-week average on its own right-side scale (no more flat tops), and the red shading is gone from this chart. The first open after updating re-downloads the news data."
@@ -479,10 +483,6 @@
     {
      "d": "2026-11-19",
      "t": "The Layoffs chart now overlays news mentions of \"layoff\"/\"layoffs\" (GDELT, since 2017) as gray dots on their own right-side scale, lined up so 2019's level sits on the dotted 2019 line. Tap its chip to hide it; the PDF Layoffs slide shows it too, with a new release-schedule row."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
     }
    ]
   },
@@ -495,8 +495,12 @@
     "fred"
    ],
    "sig": "// Inflation Expectations Widget for Scriptable (small widget)",
-   "hash": "c69cb239",
+   "hash": "20bbd22",
    "notes": [
+    {
+     "d": "2026-11-22",
+     "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+    },
     {
      "d": "2026-11-22",
      "t": "CPI no longer shows as late: October 2026 is posted, but October 2025 was never collected (2025 shutdown), so there's no official 12-month rate for October. The schedule now says so; November computes normally after Dec 10."
@@ -504,10 +508,6 @@
     {
      "d": "2026-11-22",
      "t": "Late or failed sources in the release schedule now have a Fix button: see when it was last checked and the exact error, retry just that source, open the publisher's page, or copy a report to paste to Claude."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "Tapping the widget now opens Inflation every time, like your other widgets, and the home-screen face is sharp instead of blurry."
     }
    ]
   },

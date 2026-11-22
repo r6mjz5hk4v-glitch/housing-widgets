@@ -109,6 +109,21 @@ function notes() {
   } catch (e) { return [`tools/notes.json doesn't parse: ${e.message}`]; }
 }
 
+// 6. every widget's FRED block is the master copy (tools/fred_gate.js), and nothing asks FRED around it
+function fredGate(file, src) {
+  const out = [];
+  const master = fs.readFileSync(path.join(ROOT, "tools/fred_gate.js"), "utf8");
+  const START = "// ---------- FRED: ask only when needed", END = "// ---------- end FRED ----------\n";
+  if (src.indexOf("api.stlouisfed.org") < 0 || /^(Setup|Installer)\.js$/.test(file)) return out;
+  const a = src.indexOf(START);
+  if (a < 0) return ["asks FRED without the shared FRED block: run python3 tools/sync_fred_gate.py"];
+  const b = src.indexOf(END, a) + END.length;
+  if (src.slice(a, b) !== master) out.push("its FRED block differs from tools/fred_gate.js: run python3 tools/sync_fred_gate.py");
+  const rest = src.slice(0, a) + src.slice(b);
+  if (/new Request\([^)]*(?:stlouisfed|\$\{base\})/.test(rest)) out.push("asks FRED directly instead of through fredJSON");
+  return out;
+}
+
 function runStatic() {
   const fails = [];
   for (const f of scripts()) {
@@ -116,6 +131,7 @@ function runStatic() {
     const s = syntax(f, src);
     if (s) fails.push({ check: "syntax", file: f, msg: s });
     for (const m of pageRules(f, src)) fails.push({ check: "page code", file: f, msg: m });
+    for (const m of fredGate(f, src)) fails.push({ check: "FRED", file: f, msg: m });
   }
   for (const f of trackedTextFiles()) {
     const p = path.join(ROOT, f);

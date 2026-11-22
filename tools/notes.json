@@ -1,6 +1,10 @@
 {
  "MortgageSpreadWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
   },
@@ -22,6 +26,10 @@
   }
  ],
  "MarketRateWidget.js": [
+  {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
   {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -45,6 +53,10 @@
  ],
  "ArmIndicatorWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
   },
@@ -66,6 +78,10 @@
   }
  ],
  "Sofr30Widget.js": [
+  {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
   {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -89,6 +105,10 @@
  ],
  "LockInWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
   },
@@ -111,6 +131,10 @@
  ],
  "NewConstructionWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -128,6 +152,10 @@
   }
  ],
  "BuilderInputsWidget.js": [
+  {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
   {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -197,6 +225,10 @@
  ],
  "ExistingHomesWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -259,6 +291,10 @@
  ],
  "PaymentChangeWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
   },
@@ -317,6 +353,10 @@
  ],
  "BorrowerCreditWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-19",
    "t": "Dropped the Applications rejected survey chart. In Share as PDF, Where late mortgages go now gets its own full-width second slide, with a headline that gives the latest caught-up and rolled-to-90+ shares."
   },
@@ -363,6 +403,10 @@
  ],
  "SavingRateWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
   },
@@ -385,6 +429,10 @@
  ],
  "SentimentWidget.js": [
   {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
+  {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
   },
@@ -406,6 +454,10 @@
   }
  ],
  "UnemploymentWidget.js": [
+  {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
   {
    "d": "2026-11-19",
    "t": "Calmer Layoffs chart: the news line is now a 13-week average on its own right-side scale (no more flat tops), and the red shading is gone from this chart. The first open after updating re-downloads the news data."
@@ -494,6 +546,10 @@
   }
  ],
  "InflationWidget.js": [
+  {
+   "d": "2026-11-22",
+   "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
+  },
   {
    "d": "2026-11-22",
    "t": "CPI no longer shows as late: October 2026 is posted, but October 2025 was never collected (2025 shutdown), so there's no official 12-month rate for October. The schedule now says so; November computes normally after Dec 10."
