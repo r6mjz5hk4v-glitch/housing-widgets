@@ -955,7 +955,15 @@ function schedule(s) {
   };
   const latest = (x) => (x ? x.m : null);
 
-  rows.push(exact("cpi", "actual", "CPI (actual, shelter, rent)", "BLS, monthly", latest(M.cpi), s.cal && s.cal.cpi, 1, "7:30a"));
+  // judged by the newest CPI index posted, not the newest 12-month rate: a month whose
+  // year-earlier index was never collected (October 2025, the shutdown) has no rate
+  const cpiIx = lastOf(s.actual && s.actual.cpiIx), cpiM = latest(M.cpi);
+  const cpiRow = exact("cpi", "actual", "CPI (actual, shelter, rent)", "BLS, monthly", cpiIx && (!cpiM || cpiIx.m > cpiM) ? cpiIx.m : cpiM, s.cal && s.cal.cpi, 1, "7:30a");
+  if (cpiIx && cpiM && cpiIx.m > cpiM) {
+    const base = mStr(mIdx(cpiIx.m) - 12);
+    if (!(s.actual.cpiIx || {})[base]) cpiRow.every = `BLS, monthly · ${mLabel(cpiIx.m)} posted; no 12-month rate: ${mLabel(base)} never collected${base === "2025-10" ? " (2025 shutdown)" : ""}`;
+  }
+  rows.push(cpiRow);
   rows.push(exact("pce", "actual", "PCE prices (actual)", "BEA, monthly", latest(M.pce), s.cal && s.cal.pce, 1, "7:30a"));
 
   // Michigan: preliminary around the 2nd Friday, final around the 4th
