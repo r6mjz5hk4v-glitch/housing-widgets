@@ -1,6 +1,10 @@
 {
  "MortgageSpreadWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-22",
    "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (asks FRED, Yahoo, MBA and the Philly Fed again right away), open the source's page, or copy a report for Claude."
   },
@@ -30,6 +34,10 @@
   }
  ],
  "MarketRateWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-22",
    "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (asks FRED and MBA again right away and redraws), open the source's page, or copy a report for Claude."
@@ -61,6 +69,10 @@
  ],
  "ArmIndicatorWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
@@ -86,6 +98,10 @@
   }
  ],
  "Sofr30Widget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -113,6 +129,10 @@
  ],
  "LockInWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
@@ -138,6 +158,10 @@
   }
  ],
  "NewConstructionWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-22",
    "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (Census, forecasts and cancellations again right away), open the source's page, or copy a report for Claude."
@@ -165,6 +189,10 @@
  ],
  "BuilderInputsWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
@@ -186,6 +214,10 @@
   }
  ],
  "BuilderStocksWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-22",
    "t": "Sources that aren't coming through (Yahoo prices or market caps, SEC share counts) now have a Fix button: see the error, Retry now, open the source, or copy a report for Claude. The schedule shows even before the first prices load."
@@ -241,6 +273,10 @@
  ],
  "ExistingHomesWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
@@ -262,6 +298,10 @@
   }
  ],
  "RedfinBuyersSellersWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -285,6 +325,10 @@
  ],
  "AffordabilityGapWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-19",
    "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
   },
@@ -306,6 +350,10 @@
   }
  ],
  "PaymentChangeWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -333,6 +381,10 @@
  ],
  "MigrationWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -351,6 +403,10 @@
  ],
  "RedfinMigrationWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-18",
    "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
   },
@@ -368,6 +424,10 @@
   }
  ],
  "BorrowerCreditWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-22",
    "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (checks NY Fed, Freddie, HUD, Fannie and Freddie again right away), open the source's page, or copy a report for Claude."
@@ -423,6 +483,10 @@
  ],
  "SavingRateWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
@@ -449,6 +513,10 @@
  ],
  "SentimentWidget.js": [
   {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
+  {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
@@ -474,6 +542,10 @@
   }
  ],
  "UnemploymentWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-22",
    "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (every source again right away, skipping FRED's saved copy), open the source's page, or copy a report for Claude."
@@ -512,6 +584,10 @@
   }
  ],
  "ReportsWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-18",
    "t": "MBA Forecast Commentary picks up every edition on MBA's archive page, including ones MBA posted as a web page (like October 2026), which open in Safari."
@@ -570,6 +646,10 @@
   }
  ],
  "InflationWidget.js": [
+  {
+   "d": "2026-11-23",
+   "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+  },
   {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."

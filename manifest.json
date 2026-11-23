@@ -1,5 +1,5 @@
 {
- "updated": "Nov 22, 2026",
+ "updated": "Nov 23, 2026",
  "files": [
   {
    "name": "Setup",
@@ -48,8 +48,12 @@
     "fred"
    ],
    "sig": "// Mortgage Spread Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "ef26b2e0",
+   "hash": "b50c9253",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (asks FRED, Yahoo, MBA and the Philly Fed again right away), open the source's page, or copy a report for Claude."
@@ -57,10 +61,6 @@
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
     }
    ]
   },
@@ -73,8 +73,12 @@
     "fred"
    ],
    "sig": "// WAC Widget for Scriptable (small widget, Stocks-style): market weighted average rate",
-   "hash": "33c8de2d",
+   "hash": "3160a354",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (asks FRED and MBA again right away and redraws), open the source's page, or copy a report for Claude."
@@ -82,10 +86,6 @@
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
     }
    ]
   },
@@ -98,8 +98,12 @@
     "fred"
    ],
    "sig": "// ARM Indicator Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "7afc0c45",
+   "hash": "514c91e6",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -107,10 +111,6 @@
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },
@@ -123,8 +123,12 @@
     "fred"
    ],
    "sig": "// SOFR 30-Day Average Widget for Scriptable (small widget, Stocks-style)",
-   "hash": "f0454501",
+   "hash": "383f6ce4",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -132,10 +136,6 @@
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },
@@ -148,8 +148,12 @@
     "fred"
    ],
    "sig": "// Rate Lock-In for Scriptable",
-   "hash": "7a171778",
+   "hash": "dd0a982b",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -157,10 +161,6 @@
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },
@@ -173,8 +173,12 @@
     "fred"
    ],
    "sig": "// New Construction for Scriptable",
-   "hash": "9f79f44a",
+   "hash": "70b129ff",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (Census, forecasts and cancellations again right away), open the source's page, or copy a report for Claude."
@@ -182,10 +186,6 @@
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },
@@ -198,8 +198,12 @@
     "fred"
    ],
    "sig": "// Builder Inputs for Scriptable",
-   "hash": "e3b2a876",
+   "hash": "1b31a791",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -207,10 +211,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -223,8 +223,12 @@
     "sec?"
    ],
    "sig": "// Builder Stocks Widget (small): a heatmap of the 10 largest US public",
-   "hash": "894cf576",
+   "hash": "968efb03",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Sources that aren't coming through (Yahoo prices or market caps, SEC share counts) now have a Fix button: see the error, Retry now, open the source, or copy a report for Claude. The schedule shows even before the first prices load."
@@ -232,10 +236,6 @@
     {
      "d": "2026-11-19",
      "t": "When ElevenLabs won't record with a voice, Listen now shows ElevenLabs' actual reason and offers to go back to your previous voice, pick another, or use the iPhone voice, instead of wrongly saying your key didn't work. It only asks for a new key when ElevenLabs says the key itself is bad."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "If no prices can be loaded at all, it now says so (with why) instead of sitting on \"Loading prices\". Lifting the last finger after pinching the heatmap no longer counts as a tap."
     }
    ]
   },
@@ -248,8 +248,12 @@
     "fred"
    ],
    "sig": "// Existing Homes for Scriptable",
-   "hash": "c3776953",
+   "hash": "7a8f1ab2",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -257,10 +261,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -271,8 +271,12 @@
    "about": "Redfin's count of active buyers vs sellers",
    "needs": [],
    "sig": "// Redfin Balance of Power (homebuyers vs home sellers) for Scriptable",
-   "hash": "f2afef82",
+   "hash": "8f7eb9ad",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -280,10 +284,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -296,8 +296,12 @@
     "metro"
    ],
    "sig": "// Housing Affordability Gap for Scriptable",
-   "hash": "81bbb0ee",
+   "hash": "6fa21a9d",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
@@ -305,10 +309,6 @@
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Test update: nothing about how this widget works has changed."
     }
    ]
   },
@@ -322,8 +322,12 @@
     "metro"
    ],
    "sig": "// Payment vs N Years Ago for Scriptable",
-   "hash": "b2124ce",
+   "hash": "1d914395",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -331,10 +335,6 @@
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },
@@ -347,8 +347,12 @@
     "metro"
    ],
    "sig": "// Metro Migration for Scriptable",
-   "hash": "a82a5e0c",
+   "hash": "bf478d57",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -356,10 +360,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -372,8 +372,12 @@
     "metro"
    ],
    "sig": "// Redfin Migration for Scriptable",
-   "hash": "ebc2ae58",
+   "hash": "8a7577e3",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-18",
      "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
@@ -381,10 +385,6 @@
     {
      "d": "2026-11-17",
      "t": "Test update: nothing about how this widget works has changed."
-    },
-    {
-     "d": "2026-11-17",
-     "t": "Checks for updates every 6 hours instead of once a day."
     }
    ]
   },
@@ -395,8 +395,12 @@
    "about": "Household debt and delinquency (NY Fed)",
    "needs": [],
    "sig": "// Borrower Credit for Scriptable",
-   "hash": "e7e8f316",
+   "hash": "44c59c93",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (checks NY Fed, Freddie, HUD, Fannie and Freddie again right away), open the source's page, or copy a report for Claude."
@@ -404,10 +408,6 @@
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "Dropped the Applications rejected survey chart. In Share as PDF, Where late mortgages go now gets its own full-width second slide, with a headline that gives the latest caught-up and rolled-to-90+ shares."
     }
    ]
   },
@@ -420,8 +420,12 @@
     "fred"
    ],
    "sig": "// Personal Saving Rate Widget for Scriptable (small widget)",
-   "hash": "40af5f10",
+   "hash": "1570d665",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -429,10 +433,6 @@
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },
@@ -445,8 +445,12 @@
     "fred"
    ],
    "sig": "// Consumer Sentiment Widget for Scriptable (small widget)",
-   "hash": "f5da576c",
+   "hash": "d0a4bf77",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -454,10 +458,6 @@
     {
      "d": "2026-11-19",
      "t": "Double-tap to reset now waits until your finger lifts, so tapping a chart and then pinching right away no longer snaps the zoom back."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "No more false Update ready right after installing: it double-checks GitHub before showing the notice."
     }
    ]
   },
@@ -470,8 +470,12 @@
     "fred"
    ],
    "sig": "// Unemployment Rate Widget for Scriptable (small widget)",
-   "hash": "eb5b38e3",
+   "hash": "b7bb2a04",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (every source again right away, skipping FRED's saved copy), open the source's page, or copy a report for Claude."
@@ -479,10 +483,6 @@
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
-    },
-    {
-     "d": "2026-11-19",
-     "t": "Calmer Layoffs chart: the news line is now a 13-week average on its own right-side scale (no more flat tops), and the red shading is gone from this chart. The first open after updating re-downloads the news data."
     }
    ]
   },
@@ -495,8 +495,12 @@
     "fred"
    ],
    "sig": "// Inflation Expectations Widget for Scriptable (small widget)",
-   "hash": "20bbd22",
+   "hash": "be1beb2f",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-22",
      "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -504,10 +508,6 @@
     {
      "d": "2026-11-22",
      "t": "CPI no longer shows as late: October 2026 is posted, but October 2025 was never collected (2025 shutdown), so there's no official 12-month rate for October. The schedule now says so; November computes normally after Dec 10."
-    },
-    {
-     "d": "2026-11-22",
-     "t": "Late or failed sources in the release schedule now have a Fix button: see when it was last checked and the exact error, retry just that source, open the publisher's page, or copy a report to paste to Claude."
     }
    ]
   },
@@ -518,8 +518,12 @@
    "about": "Release calendar of industry PDFs (Ginnie, Urban, ICE, Fannie, MBA commentary, HUD, Fed) and builder investor decks",
    "needs": [],
    "sig": "// Reports Widget (small): a release calendar for the industry reports you",
-   "hash": "819be930",
+   "hash": "ff598b89",
    "notes": [
+    {
+     "d": "2026-11-23",
+     "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
+    },
     {
      "d": "2026-11-18",
      "t": "MBA Forecast Commentary picks up every edition on MBA's archive page, including ones MBA posted as a web page (like October 2026), which open in Safari."
@@ -527,10 +531,6 @@
     {
      "d": "2026-11-18",
      "t": "Builder earnings-release cards removed: builder content is now just the investor decks. MBA Forecast Commentary is found from MBA's archive page, wherever MBA stores it."
-    },
-    {
-     "d": "2026-11-18",
-     "t": "New card: Builder investor decks. The newest slide decks (not filings) from D.R. Horton, Lennar, Taylor Morrison, KB Home, Green Brick and Dream Finders, plus Pulte and Toll when they post one."
     }
    ]
   }
