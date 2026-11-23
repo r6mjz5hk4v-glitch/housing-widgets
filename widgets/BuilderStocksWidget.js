@@ -378,7 +378,7 @@ async function refresh(s, force, say, step) {
   // 3) SEC share counts, only for builders Yahoo gave no market cap
   const capped = (s.ycap && s.ycap.caps) || {};
   if (secContact()) {
-    const need = CANDIDATES.filter((c) => !capped[c.t] && (!s.shares[c.t] || !s.shares[c.t].src || (s.shares[c.t].err ? now - s.shares[c.t].at > 864e5 : now - s.shares[c.t].at > SHARES_DAYS * 864e5)));
+    const need = CANDIDATES.filter((c) => !capped[c.t] && (FIX_FORCE || !s.shares[c.t] || !s.shares[c.t].src || (s.shares[c.t].err ? now - s.shares[c.t].at > 864e5 : now - s.shares[c.t].at > SHARES_DAYS * 864e5)));
     if (need.length) {
       if (say) await say(`Getting share counts from SEC for ${need.map((c) => c.t).join(", ")}…`);
       await timed("SEC", async () => {
@@ -578,6 +578,8 @@ function schedRows(s, M) {
     last: lv ? (open ? "live, " + ctTime(lv.at) + " CT" : (M.dates.length ? shortD(M.dates[M.dates.length - 1]) + " close" : "")) : "not loaded",
     next: open ? "every refresh until 3:00 PM CT" : when(nextOpen().getTime()) + " open (est.: holidays not known)",
     late,
+    checked: s.checked || null,
+    err: errs[0] || null,
   });
   const yc = s.ycap || {};
   rows.push({
@@ -585,6 +587,8 @@ function schedRows(s, M) {
     last: yc.at ? new Date(yc.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" }) + " CT" : "not loaded",
     next: "with prices: every ~15 min while the market is open, hourly otherwise",
     late: yc.err ? "Yahoo didn't give market caps: " + yc.err + (secContact() ? " · using SEC estimates" : "") : null,
+    checked: yc.errAt || yc.at || null,
+    err: yc.err || null,
   });
   const filed = Object.values(s.shares || {}).map((x) => x.filed).filter(Boolean).sort();
   rows.push({
@@ -592,6 +596,8 @@ function schedRows(s, M) {
     last: filed.length ? "newest filed " + shortD(filed[filed.length - 1]) : secContact() ? "not loaded" : "needs your SEC contact",
     next: "each builder's next 10-Q or 10-K, quarterly; checked weekly",
     late: secContact() ? null : "The SEC backup needs your name and email: tap SEC contact below",
+    checked: Math.max(0, ...Object.values(s.shares || {}).map((x) => x.at || 0)) || null,
+    err: (() => { const e = Object.entries(s.shares || {}).find(([, x]) => x.err); return e ? e[0] + ": " + e[1].err : null; })(),
   });
   return rows;
 }
@@ -620,7 +626,7 @@ function payload(s) {
   const M = model(s, WINDOW);
   const base = { ...M, top: M.top.map((r) => r.t), ranked: M.ranked.map((r) => { const o = { ...r }; delete o.cells; return o; }) };
   return {
-    windows: WINDOWS, start: WINDOW, maxDays: MAX_DAYS, base, series: series(s, M), sched: schedRows(s, M), earn: earnRows(s, M),
+    windows: WINDOWS, start: WINDOW, maxDays: MAX_DAYS, base, series: series(s, M), sched: fixPages(schedRows(s, M)), earn: earnRows(s, M),
     colors: { down: DOWN.map(([lo, c]) => [lo === -Infinity ? null : lo, c]), up: UP.map(([lo, c]) => [lo === -Infinity ? null : lo, c]) },
     checked: s.checked || null, sec: !!secContact(), voice: voiceLabel(s),
     sources: "Sources: stock prices from Yahoo Finance's chart feed (about 15 minutes delayed; Stooq daily closes when Yahoo doesn't answer). Market caps from Yahoo Finance's quote feed; where Yahoo gives none, an SEC estimate (marked “SEC est.”): latest price × shares outstanding from the company's latest SEC filing (the cover-page count, or the latest quarter's diluted weighted-average shares where SEC's data has none, as for Lennar's two share classes). Top 10 of " + CANDIDATES.length + " US public homebuilders by market cap. Past 150 trading days, each cell is a week (its last trading day).",
@@ -753,11 +759,91 @@ function renderEarn() {
   el("earn").innerHTML = h;
 }
 el("earn").addEventListener("click", function (e) { var r = e.target.closest(".ecall"); if (!r) return; req = "call:" + r.getAttribute("data-t") + ":" + r.getAttribute("data-w"); r.style.opacity = "0.5"; setTimeout(function () { r.style.opacity = ""; }, 4000); });
+// ---------- Fix panel: Builder Stocks schedule adapter ----------
+function schedEsc(t) { return esc(t).replace(/"/g, "&quot;"); }
+function schedState(r) { return { late: !!r.late, main: r.late ? "Not coming through" : "On schedule", sub: "" }; }
+function schedWhy(r) { return r.late || ""; }
 function renderSched() {
-  el("sched").innerHTML = (D.sched || []).map(function (r) {
-    return '<div class="sr"><b>' + esc(r.name) + '</b><span>Latest: ' + esc(r.last) + " · Next: " + esc(r.next) + "</span>" + (r.late ? '<span class="late">' + esc(r.late) + "</span>" : "") + "</div>";
+  window.__sched = D.sched || [];
+  el("sched").innerHTML = (FIXNOTE ? '<div class="fixMsg ok">' + schedEsc(FIXNOTE) + "</div>" : "") + window.__sched.map(function (r) {
+    var st = schedState(r);
+    return '<div class="sr"><b>' + esc(r.name) + '</b><span>Latest: ' + esc(r.last) + " · Next: " + esc(r.next) + "</span>" + (r.late ? '<span class="late">' + esc(r.late) + "</span>" + fixBtn(r) : "") + "</div>" + (r.late && FIXOPEN[r.name] ? fixPanel(r, st) : "");
   }).join("");
 }
+// ---------- Fix panel: page side (shared by the widgets with the standard release schedule) ----------
+// Late rows get "Fix ›": details, Retry now, Open the source, Copy report for Claude.
+// Page code: no backticks, no dollar-brace, no backslashes. Master copy: tools/fix_kit_page.js.
+var FIXOPEN = {}, FIXMSG = {}, FIXBUSY = {}, FIXNOTE = "";
+(function () {
+  var css = document.createElement("style");
+  css.textContent = ".fixBtn{display:inline-block;margin-top:5px;font:inherit;font-size:11.5px;font-weight:600;color:#FF9F0A;background:rgba(255,159,10,0.14);border:none;border-radius:8px;padding:4px 10px}" +
+    ".fixPanel{margin:2px 0 8px;padding:9px 10px;border-radius:10px;background:#1C1C1E;border:1px solid #3A3A3C;font-size:11.5px;color:#C7C7CC;line-height:1.4}" +
+    ".fixPanel b{color:#E5E5EA;font-weight:600}.fixPanel .err{color:#FF9F0A;word-break:break-word}" +
+    ".fixActs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.fixActs button{flex:1 1 auto;font:inherit;font-size:12px;font-weight:600;color:#E5E5EA;background:#2C2C2E;border:none;border-radius:9px;padding:8px;min-height:34px}" +
+    ".fixActs button.primary{color:#1C1C1E;background:#FF9F0A}.fixActs button:disabled{opacity:0.5}" +
+    ".fixMsg{margin-top:7px;color:#98989F;font-size:11.5px}.fixMsg.ok{color:#30D158}.fixMsg.bad{color:#FF9F0A}";
+  document.head.appendChild(css);
+})();
+function fixCT(t) {
+  if (!t) return "never";
+  try { return new Date(t).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " CT"; }
+  catch (e) { return String(t); }
+}
+function fixHost(u) { var m = String(u || "").match(/^https?:..([^/]+)/); return m ? m[1] : ""; }
+function fixText(h) { var d = document.createElement("div"); d.innerHTML = h || ""; return d.textContent; }
+function fixRow(k) { return (window.__sched || []).filter(function (r) { return r.name === k; })[0]; }
+function fixBtn(r) { return '<button class="fixBtn" data-fix="' + schedEsc(r.name) + '">' + (FIXOPEN[r.name] ? "Close ‹" : "Fix ›") + "</button>"; }
+function fixPanel(r, st) {
+  var m = FIXMSG[r.name], busy = FIXBUSY[r.name];
+  return '<div class="fixPanel">' +
+    "<div><b>Status:</b> " + schedEsc(fixText(st.main)) + (st.sub ? ", " + schedEsc(fixText(st.sub)) : "") + "</div>" +
+    "<div><b>Last checked:</b> " + schedEsc(fixCT(r.checked)) + "</div>" +
+    (r.err ? '<div><b>Error:</b> <span class="err">' + schedEsc(r.err) + "</span></div>" : "<div><b>Error:</b> none; the source answered, but the new release isn't in it yet.</div>") +
+    (r.page ? "<div><b>Source:</b> " + schedEsc(fixHost(r.page)) + "</div>" : "") +
+    '<div class="fixActs"><button class="primary" data-fixkey="' + schedEsc(r.name) + '" data-fixact="retry"' + (busy ? " disabled" : "") + ">" + (busy ? "Refreshing…" : "Retry now") + "</button>" +
+    (r.page ? '<button data-fixkey="' + schedEsc(r.name) + '" data-fixact="open">Open the source</button>' : "") +
+    '<button data-fixkey="' + schedEsc(r.name) + '" data-fixact="copy">Copy report for Claude</button></div>' +
+    (m ? '<div class="fixMsg ' + (m.ok ? "ok" : "bad") + '">' + schedEsc(m.msg) + "</div>" : "") + "</div>";
+}
+function fixReport(r, st) {
+  var NL = String.fromCharCode(10);
+  var when = function (t) { if (!t || isNaN(Date.parse(t))) return t || "?"; return r.approx ? new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : fixCT(t); };
+  return ["Housing Widgets · " + (document.title || "__FIX_NAME__") + ": source not coming through",
+    "Source: " + r.name + (r.every ? " (" + r.every + ")" : ""),
+    "Status: " + fixText(st.main) + (st.sub ? ", " + fixText(st.sub) : ""),
+    "Latest data shown: " + r.last,
+    "Due: " + when(r.next) + (r.to && r.to !== r.next ? " to " + when(r.to) : ""),
+    "Last checked: " + fixCT(r.checked),
+    "Error: " + (r.err || "none (source answered; release not in it yet)"),
+    "Why shown: " + schedWhy(r),
+    "Source page: " + (r.page || "none listed"),
+    "Report made: " + fixCT(Date.now())].join(NL);
+}
+document.addEventListener("click", function (e) {
+  var t = e.target && e.target.closest ? e.target.closest("[data-fix],[data-fixact]") : null;
+  if (!t) return;
+  var k = t.getAttribute("data-fix");
+  if (k != null) { FIXOPEN[k] = !FIXOPEN[k]; renderSched(window.__sched); return; }
+  var key = t.getAttribute("data-fixkey"), act = t.getAttribute("data-fixact"), r = fixRow(key);
+  if (!r) return;
+  if (act === "open") { if (r.page) window.__openUrl = r.page; return; }
+  if (act === "retry") { FIXBUSY[key] = true; FIXMSG[key] = null; FIXNOTE = ""; window.__fixReq = { key: key, action: "retry" }; }
+  if (act === "copy") window.__fixReq = { key: key, action: "copy", text: fixReport(r, schedState(r)) };
+  renderSched(window.__sched);
+});
+window.__takeFix = function () { var q = window.__fixReq; window.__fixReq = null; return q ? JSON.stringify(q) : null; };
+window.__takeOpen = function () { var u = window.__openUrl; window.__openUrl = null; return u || null; };
+window.fixDone = function (res) {
+  if (!res || res.key == null) return;
+  FIXBUSY[res.key] = false;
+  var r = fixRow(res.key), st = r ? schedState(r) : null;
+  if (res.after) res = { key: res.key, ok: !(st && st.late), msg: !r ? "Refreshed." : st.late ? "Still late after refreshing. " + schedWhy(r) : "Up to date now: latest " + r.last + "." };
+  FIXMSG[res.key] = res;
+  if (r && st && st.late) FIXOPEN[res.key] = true;
+  else { FIXOPEN[res.key] = false; FIXNOTE = (r ? r.name + ": " : "") + res.msg; }
+  renderSched(window.__sched);
+};
+// ---------- end Fix panel (page) ----------
 function renderSeg() {
   el("seg").innerHTML = D.windows.map(function (w) { return '<button data-w="' + w + '" class="' + (w === W ? "on" : "") + '">' + w + " days</button>"; }).join("") +
     (D.windows.indexOf(W) < 0 ? '<button data-w="' + W + '" class="on">' + W + " days</button>" : "");
@@ -829,6 +915,8 @@ function render() {
   el("note").textContent = D.sources;
   el("secBtn").textContent = D.sec ? "SEC contact" : "Set SEC contact (for market caps)";
   el("voiceBtn").textContent = "Voice: " + (D.voice || "iPhone voice");
+  // the release schedule (and its Fix panel) shows even before any prices come in
+  renderSched();
   // first open on a phone: nothing saved yet, so wait for the first prices
   if (!D.series || !D.series.dates || D.series.dates.length < 2) {
     // done looking (checked is set) and still no prices: say so, with why, instead of waiting forever
@@ -843,7 +931,7 @@ function render() {
   var M = cur();
   el("lede").textContent = "Top " + M.top.length + " of " + M.ranked.length + " US public homebuilders by market cap" + (D.haveCaps === false ? "" : "");
   if (!M.haveCaps) el("errs").textContent = "No market caps yet (share counts come from SEC filings): showing builders in list order.";
-  renderEarn(); renderSched(); renderSeg(); renderHeat(); renderLegend(); renderCaps();
+  renderEarn(); renderSeg(); renderHeat(); renderLegend(); renderCaps();
   el("note").textContent = D.sources;
   el("secBtn").textContent = D.sec ? "SEC contact" : "Set SEC contact (for market caps)";
   el("voiceBtn").textContent = "Voice: " + (D.voice || "iPhone voice");
@@ -2163,11 +2251,74 @@ async function handleShare(req) {
 
 // While the full-screen view is open, pick up Share taps from the page.
 // Anything that can't be shown over the open view is shared once it closes.
+// ---------- Fix panel: script side (shared) ----------
+// The release schedule's Fix panel asks through window.__takeFix (Retry now, Copy
+// report) and window.__takeOpen (Open the source). Each widget's full view sets
+// FIX_RETRY to a function that refreshes everything and updates the page; while it
+// runs, FIX_FORCE (and FRED_FORCE, where a widget asks FRED) skip "checked recently".
+// tools/fix_kit_script.js is the master copy; tools/sync_fix_kit.py puts it in each widget.
+let FIX_FORCE = false;
+let FIX_RETRY = null;
+// the publisher's page for a schedule row, by its name (FRED rows carry their own)
+const FIX_PAGES = [
+  [/^NY Fed household debt/, "https://www.newyorkfed.org/microeconomics/hhdc"],
+  [/^Freddie Mac delinquency/, "https://www.freddiemac.com/investors/financials/monthly-volume-summaries"],
+  [/^MBA forecast/, "https://www.mba.org/news-and-research/forecasts-and-commentary"],
+  [/^MBA weekly/, "https://www.mba.org/news-and-research/newsroom"],
+  [/^NY Fed housing survey/, "https://www.newyorkfed.org/microeconomics/sce/housing"],
+  [/^NY Fed survey: job/, "https://www.newyorkfed.org/microeconomics/sce/labor"],
+  [/^Pro forecasters/, "https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/survey-of-professional-forecasters"],
+  [/^Closings \(Zillow\)/, "https://www.zillow.com/research/data/"],
+  [/^Treasury yields/, "https://www.federalreserve.gov/releases/h15/"],
+  [/^Layoffs in the news/, "https://www.gdeltproject.org/"],
+  [/^Optimal Blue/, "https://fred.stlouisfed.org/series/OBMMIC30YF"],
+  [/^Freddie Mac 30-yr/, "https://fred.stlouisfed.org/series/MORTGAGE30US"],
+  [/^MOVE index/, "https://finance.yahoo.com/quote/%5EMOVE/"],
+  [/^For-sale starts/, "https://www.census.gov/construction/nrc/index.html"],
+  [/^Stock prices|^Market caps/, "https://finance.yahoo.com/"],
+  [/^Shares outstanding/, "https://www.sec.gov/edgar/search/"],
+];
+function fixPages(rows) {
+  (rows || []).forEach((r) => {
+    if (r.page) return;
+    if (r.series) { r.page = "https://fred.stlouisfed.org/series/" + r.series; return; }
+    const hit = FIX_PAGES.find((p) => p[0].test(r.name || ""));
+    if (hit) r.page = hit[1];
+  });
+  return rows;
+}
+// one look at the page: answer a Fix request or an Open-the-source tap
+async function fixPoll(wv) {
+  let fx = null;
+  try { fx = await wv.evaluateJavaScript("window.__takeFix ? window.__takeFix() : null"); } catch (e) {}
+  if (fx) {
+    let req = {};
+    try { req = JSON.parse(fx); } catch (e) {}
+    let res = { key: req.key, ok: true };
+    if (req.action === "copy") { Pasteboard.copyString(String(req.text || "").replace("__FIX_NAME__", () => Script.name())); res.msg = "Copied. Paste it to Claude."; }
+    else if (req.action === "retry") {
+      if (!FIX_RETRY) res = { key: req.key, ok: false, msg: "Retry works once the page has finished its first load; try again in a moment." };
+      else {
+        FIX_FORCE = true;
+        try { FRED_FORCE = true; } catch (e) {}
+        try { await FIX_RETRY(); res.after = true; }
+        catch (e) { res = { key: req.key, ok: false, msg: "Retry failed: " + String((e && e.message) || e).slice(0, 160) }; }
+        finally { FIX_FORCE = false; try { FRED_FORCE = false; } catch (e) {} }
+      }
+    }
+    try { await wv.evaluateJavaScript(`window.fixDone && window.fixDone(${JSON.stringify(res)});0`); } catch (e) {}
+  }
+  let u = null;
+  try { u = await wv.evaluateJavaScript("window.__takeOpen ? window.__takeOpen() : null"); } catch (e) {}
+  if (u) { try { await Safari.openInApp(u, false); } catch (e) { try { Safari.open(u); } catch (e2) {} } }
+}
+// ---------- end Fix panel (script) ----------
 async function sharePoller(wv, isOpen) {
   const later = [];
   while (isOpen()) {
     await sleep(600);
     if (!isOpen()) break;
+    await fixPoll(wv);
     let raw = null;
     try {
       raw = await wv.evaluateJavaScript("window.__takeShare ? window.__takeShare() : null");
@@ -2244,6 +2395,13 @@ async function openApp() {
     // the page is up with the last saved numbers; fresh ones fill in step by step,
     // while taps (calls, SEC contact) are answered at the same time
     let busy = true, last = Date.now();
+    // Fix › Retry now: everything again (after any refresh already running), then redraw
+    FIX_RETRY = async () => {
+      while (busy && isOpen()) await sleep(300);
+      busy = true;
+      try { await refresh(s, true, say, push); } finally { busy = false; last = Date.now(); }
+      await push();
+    };
     refresh(s, true, say, push).then(async () => {
       busy = false;
       await push();

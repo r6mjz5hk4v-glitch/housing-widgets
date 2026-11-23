@@ -336,7 +336,7 @@ async function refresh(saved, force, say) {
   say = say || (async () => {});
   const s = saved ? JSON.parse(JSON.stringify(saved)) : {};
   const errors = [];
-  if (force || !s.hh || hoursSince(s.hhChecked) >= CHECK_HOURS) {
+  if (force || FIX_FORCE || !s.hh || hoursSince(s.hhChecked) >= CHECK_HOURS) {
     await say("Checking the NY Fed's Household Debt and Credit report...");
     try { const h = await fetchHhdc(s.hh, say); if (h) s.hh = h; s.hhChecked = new Date().toISOString(); }
     catch (e) { errors.push("Household Debt and Credit: " + (e.message || e)); }
@@ -638,7 +638,7 @@ async function refreshFha(saved, say, keepGoing) {
   try {
     // 1) the newest report: HUD posts a month's report about 6 to 8 weeks after it ends
     const filesT = Object.keys(f.files).map(Number), newest = filesT.length ? Math.max(...filesT) : -1;
-    if (!f.checked || hoursSince(f.checked) >= CHECK_HOURS) {
+    if (FIX_FORCE || !f.checked || hoursSince(f.checked) >= CHECK_HOURS) {
       for (let t = nowMonth() - 1; t > newest && t >= nowMonth() - 5; t--) {
         await say(`Looking for HUD's ${monthName(t)} FHA report...`);
         tries++;
@@ -793,7 +793,7 @@ async function refreshGse(saved, say, keepGoing) {
     try {
       // newest: last month's report comes out three to five weeks after the month ends
       const files = Object.keys(g.files).map(Number), newest = files.length ? Math.max(...files) : -1;
-      if (!g.checked || hoursSince(g.checked) >= CHECK_HOURS) {
+      if (FIX_FORCE || !g.checked || hoursSince(g.checked) >= CHECK_HOURS) {
         for (let t = nowMonth() - 1; t > newest && t >= nowMonth() - 4 && keepGoing(); t--) {
           await say(`Looking for ${GSE[k].name}'s ${monthName(t)} report...`);
           tries++;
@@ -1047,7 +1047,7 @@ async function schedFredRow(r, apiKey) {
   const dates = await schedFredDates(r.series, apiKey), now = Date.now();
   let next = null;
   for (const d of dates) { const t = schedNy(d, r.at[0], r.at[1]); if (t.getTime() > now) { next = t; break; } }
-  return { name: r.name, last: r.last || "", next: next ? next.toISOString() : null, approx: false, every: r.every || "" };
+  return { name: r.name, last: r.last || "", next: next ? next.toISOString() : null, approx: false, every: r.every || "", series: r.series };
 }
 // An estimated row: win is a date ("YYYY-MM-DD") or a window [from, to]; chk is
 // what the widget knows about its last look: { checked (ISO), err, cadence }
@@ -1456,11 +1456,74 @@ async function handleShare(req) {
 
 // While the full-screen view is open, pick up Share taps from the page.
 // Anything that can't be shown over the open view is shared once it closes.
+// ---------- Fix panel: script side (shared) ----------
+// The release schedule's Fix panel asks through window.__takeFix (Retry now, Copy
+// report) and window.__takeOpen (Open the source). Each widget's full view sets
+// FIX_RETRY to a function that refreshes everything and updates the page; while it
+// runs, FIX_FORCE (and FRED_FORCE, where a widget asks FRED) skip "checked recently".
+// tools/fix_kit_script.js is the master copy; tools/sync_fix_kit.py puts it in each widget.
+let FIX_FORCE = false;
+let FIX_RETRY = null;
+// the publisher's page for a schedule row, by its name (FRED rows carry their own)
+const FIX_PAGES = [
+  [/^NY Fed household debt/, "https://www.newyorkfed.org/microeconomics/hhdc"],
+  [/^Freddie Mac delinquency/, "https://www.freddiemac.com/investors/financials/monthly-volume-summaries"],
+  [/^MBA forecast/, "https://www.mba.org/news-and-research/forecasts-and-commentary"],
+  [/^MBA weekly/, "https://www.mba.org/news-and-research/newsroom"],
+  [/^NY Fed housing survey/, "https://www.newyorkfed.org/microeconomics/sce/housing"],
+  [/^NY Fed survey: job/, "https://www.newyorkfed.org/microeconomics/sce/labor"],
+  [/^Pro forecasters/, "https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/survey-of-professional-forecasters"],
+  [/^Closings \(Zillow\)/, "https://www.zillow.com/research/data/"],
+  [/^Treasury yields/, "https://www.federalreserve.gov/releases/h15/"],
+  [/^Layoffs in the news/, "https://www.gdeltproject.org/"],
+  [/^Optimal Blue/, "https://fred.stlouisfed.org/series/OBMMIC30YF"],
+  [/^Freddie Mac 30-yr/, "https://fred.stlouisfed.org/series/MORTGAGE30US"],
+  [/^MOVE index/, "https://finance.yahoo.com/quote/%5EMOVE/"],
+  [/^For-sale starts/, "https://www.census.gov/construction/nrc/index.html"],
+  [/^Stock prices|^Market caps/, "https://finance.yahoo.com/"],
+  [/^Shares outstanding/, "https://www.sec.gov/edgar/search/"],
+];
+function fixPages(rows) {
+  (rows || []).forEach((r) => {
+    if (r.page) return;
+    if (r.series) { r.page = "https://fred.stlouisfed.org/series/" + r.series; return; }
+    const hit = FIX_PAGES.find((p) => p[0].test(r.name || ""));
+    if (hit) r.page = hit[1];
+  });
+  return rows;
+}
+// one look at the page: answer a Fix request or an Open-the-source tap
+async function fixPoll(wv) {
+  let fx = null;
+  try { fx = await wv.evaluateJavaScript("window.__takeFix ? window.__takeFix() : null"); } catch (e) {}
+  if (fx) {
+    let req = {};
+    try { req = JSON.parse(fx); } catch (e) {}
+    let res = { key: req.key, ok: true };
+    if (req.action === "copy") { Pasteboard.copyString(String(req.text || "").replace("__FIX_NAME__", () => Script.name())); res.msg = "Copied. Paste it to Claude."; }
+    else if (req.action === "retry") {
+      if (!FIX_RETRY) res = { key: req.key, ok: false, msg: "Retry works once the page has finished its first load; try again in a moment." };
+      else {
+        FIX_FORCE = true;
+        try { FRED_FORCE = true; } catch (e) {}
+        try { await FIX_RETRY(); res.after = true; }
+        catch (e) { res = { key: req.key, ok: false, msg: "Retry failed: " + String((e && e.message) || e).slice(0, 160) }; }
+        finally { FIX_FORCE = false; try { FRED_FORCE = false; } catch (e) {} }
+      }
+    }
+    try { await wv.evaluateJavaScript(`window.fixDone && window.fixDone(${JSON.stringify(res)});0`); } catch (e) {}
+  }
+  let u = null;
+  try { u = await wv.evaluateJavaScript("window.__takeOpen ? window.__takeOpen() : null"); } catch (e) {}
+  if (u) { try { await Safari.openInApp(u, false); } catch (e) { try { Safari.open(u); } catch (e2) {} } }
+}
+// ---------- end Fix panel (script) ----------
 async function sharePoller(wv, isOpen) {
   const later = [];
   while (isOpen()) {
     await sleep(600);
     if (!isOpen()) break;
+    await fixPoll(wv);
     let raw = null;
     try {
       raw = await wv.evaluateJavaScript("window.__takeShare ? window.__takeShare() : null");
@@ -1781,14 +1844,88 @@ function renderSched(rows) {
   if (!rows.length) { box.style.display = "none"; return; }
   box.style.display = "";
   var show = schedAll ? rows : rows.slice(0, 3);
-  box.innerHTML = '<div class="schedHead"><b>Release schedule</b><span>latest · next update (your time)</span></div>' +
+  box.innerHTML = '<div class="schedHead"><b>Release schedule</b><span>latest · next update (your time)</span></div>' + (FIXNOTE ? '<div class="fixMsg ok">' + schedEsc(FIXNOTE) + "</div>" : "") +
     show.map(function (r) {
       var st = schedState(r);
-      return '<div class="schedRow"><span class="schedName">' + schedEsc(r.name) + (r.every ? "<i>" + schedEsc(r.every) + "</i>" : "") + (st.late ? '<i class="schedWhy">' + schedEsc(schedWhy(r)) + "</i>" : "") + '</span><span class="schedLast">' + schedEsc(r.last) + '</span><span class="schedNext">' + st.main + (st.sub ? "<i>" + st.sub + "</i>" : "") + "</span></div>";
+      return '<div class="schedRow"><span class="schedName">' + schedEsc(r.name) + (r.every ? "<i>" + schedEsc(r.every) + "</i>" : "") + (st.late ? '<i class="schedWhy">' + schedEsc(schedWhy(r)) + "</i>" : "") + (st.late ? fixBtn(r) : "") + '</span><span class="schedLast">' + schedEsc(r.last) + '</span><span class="schedNext">' + st.main + (st.sub ? "<i>" + st.sub + "</i>" : "") + "</span></div>" + (st.late && FIXOPEN[r.name] ? fixPanel(r, st) : "");
     }).join("") +
     (rows.length > 3 ? '<div class="schedMore">' + (schedAll ? "Show fewer" : "All " + rows.length + " sources") + "</div>" : "");
 }
 document.addEventListener("click", function (e) { var t = e.target && e.target.closest ? e.target.closest(".schedMore") : null; if (!t) return; schedAll = !schedAll; renderSched(window.__sched); });
+// ---------- Fix panel: page side (shared by the widgets with the standard release schedule) ----------
+// Late rows get "Fix ›": details, Retry now, Open the source, Copy report for Claude.
+// Page code: no backticks, no dollar-brace, no backslashes. Master copy: tools/fix_kit_page.js.
+var FIXOPEN = {}, FIXMSG = {}, FIXBUSY = {}, FIXNOTE = "";
+(function () {
+  var css = document.createElement("style");
+  css.textContent = ".fixBtn{display:inline-block;margin-top:5px;font:inherit;font-size:11.5px;font-weight:600;color:#FF9F0A;background:rgba(255,159,10,0.14);border:none;border-radius:8px;padding:4px 10px}" +
+    ".fixPanel{margin:2px 0 8px;padding:9px 10px;border-radius:10px;background:#1C1C1E;border:1px solid #3A3A3C;font-size:11.5px;color:#C7C7CC;line-height:1.4}" +
+    ".fixPanel b{color:#E5E5EA;font-weight:600}.fixPanel .err{color:#FF9F0A;word-break:break-word}" +
+    ".fixActs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.fixActs button{flex:1 1 auto;font:inherit;font-size:12px;font-weight:600;color:#E5E5EA;background:#2C2C2E;border:none;border-radius:9px;padding:8px;min-height:34px}" +
+    ".fixActs button.primary{color:#1C1C1E;background:#FF9F0A}.fixActs button:disabled{opacity:0.5}" +
+    ".fixMsg{margin-top:7px;color:#98989F;font-size:11.5px}.fixMsg.ok{color:#30D158}.fixMsg.bad{color:#FF9F0A}";
+  document.head.appendChild(css);
+})();
+function fixCT(t) {
+  if (!t) return "never";
+  try { return new Date(t).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " CT"; }
+  catch (e) { return String(t); }
+}
+function fixHost(u) { var m = String(u || "").match(/^https?:..([^/]+)/); return m ? m[1] : ""; }
+function fixText(h) { var d = document.createElement("div"); d.innerHTML = h || ""; return d.textContent; }
+function fixRow(k) { return (window.__sched || []).filter(function (r) { return r.name === k; })[0]; }
+function fixBtn(r) { return '<button class="fixBtn" data-fix="' + schedEsc(r.name) + '">' + (FIXOPEN[r.name] ? "Close ‹" : "Fix ›") + "</button>"; }
+function fixPanel(r, st) {
+  var m = FIXMSG[r.name], busy = FIXBUSY[r.name];
+  return '<div class="fixPanel">' +
+    "<div><b>Status:</b> " + schedEsc(fixText(st.main)) + (st.sub ? ", " + schedEsc(fixText(st.sub)) : "") + "</div>" +
+    "<div><b>Last checked:</b> " + schedEsc(fixCT(r.checked)) + "</div>" +
+    (r.err ? '<div><b>Error:</b> <span class="err">' + schedEsc(r.err) + "</span></div>" : "<div><b>Error:</b> none; the source answered, but the new release isn't in it yet.</div>") +
+    (r.page ? "<div><b>Source:</b> " + schedEsc(fixHost(r.page)) + "</div>" : "") +
+    '<div class="fixActs"><button class="primary" data-fixkey="' + schedEsc(r.name) + '" data-fixact="retry"' + (busy ? " disabled" : "") + ">" + (busy ? "Refreshing…" : "Retry now") + "</button>" +
+    (r.page ? '<button data-fixkey="' + schedEsc(r.name) + '" data-fixact="open">Open the source</button>' : "") +
+    '<button data-fixkey="' + schedEsc(r.name) + '" data-fixact="copy">Copy report for Claude</button></div>' +
+    (m ? '<div class="fixMsg ' + (m.ok ? "ok" : "bad") + '">' + schedEsc(m.msg) + "</div>" : "") + "</div>";
+}
+function fixReport(r, st) {
+  var NL = String.fromCharCode(10);
+  var when = function (t) { if (!t || isNaN(Date.parse(t))) return t || "?"; return r.approx ? new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : fixCT(t); };
+  return ["Housing Widgets · " + (document.title || "__FIX_NAME__") + ": source not coming through",
+    "Source: " + r.name + (r.every ? " (" + r.every + ")" : ""),
+    "Status: " + fixText(st.main) + (st.sub ? ", " + fixText(st.sub) : ""),
+    "Latest data shown: " + r.last,
+    "Due: " + when(r.next) + (r.to && r.to !== r.next ? " to " + when(r.to) : ""),
+    "Last checked: " + fixCT(r.checked),
+    "Error: " + (r.err || "none (source answered; release not in it yet)"),
+    "Why shown: " + schedWhy(r),
+    "Source page: " + (r.page || "none listed"),
+    "Report made: " + fixCT(Date.now())].join(NL);
+}
+document.addEventListener("click", function (e) {
+  var t = e.target && e.target.closest ? e.target.closest("[data-fix],[data-fixact]") : null;
+  if (!t) return;
+  var k = t.getAttribute("data-fix");
+  if (k != null) { FIXOPEN[k] = !FIXOPEN[k]; renderSched(window.__sched); return; }
+  var key = t.getAttribute("data-fixkey"), act = t.getAttribute("data-fixact"), r = fixRow(key);
+  if (!r) return;
+  if (act === "open") { if (r.page) window.__openUrl = r.page; return; }
+  if (act === "retry") { FIXBUSY[key] = true; FIXMSG[key] = null; FIXNOTE = ""; window.__fixReq = { key: key, action: "retry" }; }
+  if (act === "copy") window.__fixReq = { key: key, action: "copy", text: fixReport(r, schedState(r)) };
+  renderSched(window.__sched);
+});
+window.__takeFix = function () { var q = window.__fixReq; window.__fixReq = null; return q ? JSON.stringify(q) : null; };
+window.__takeOpen = function () { var u = window.__openUrl; window.__openUrl = null; return u || null; };
+window.fixDone = function (res) {
+  if (!res || res.key == null) return;
+  FIXBUSY[res.key] = false;
+  var r = fixRow(res.key), st = r ? schedState(r) : null;
+  if (res.after) res = { key: res.key, ok: !(st && st.late), msg: !r ? "Refreshed." : st.late ? "Still late after refreshing. " + schedWhy(r) : "Up to date now: latest " + r.last + "." };
+  FIXMSG[res.key] = res;
+  if (r && st && st.late) FIXOPEN[res.key] = true;
+  else { FIXOPEN[res.key] = false; FIXNOTE = (r ? r.name + ": " : "") + res.msg; }
+  renderSched(window.__sched);
+};
+// ---------- end Fix panel (page) ----------
 function renderAll() {
   if (!D) return;
   window.__sched = D.sched; renderSched(D.sched);
@@ -2280,7 +2417,7 @@ function payload(s) {
     fha, fhaAsOf: fha.length ? mn(fha[fha.length - 1].t) : null,
     hud: hudPayload(s.fha, mn),
     gse: { fnm: gs("fnm"), fre: gs("fre") },
-    sched: bcSchedule(s),
+    sched: fixPages(bcSchedule(s)),
     fhaPdf: s.fha && Object.keys(s.fha.files || {}).length ? mn(Math.max(...Object.keys(s.fha.files).map(Number))) : null,
     del: hh.del || null, cure: hh.cure || [], roll: hh.roll || [], orig: hh.orig || [], med: hh.med || [], brk: hh.brk || null,
     recessions: RECESSIONS,
@@ -2318,15 +2455,30 @@ async function openFullScreen(saved) {
         catch (e) { const a = new Alert(); a.title = "Couldn't open HUD's PDF"; a.message = e.message || String(e); a.addAction("OK"); await a.present(); }
       }
     })();
+    let firstDone = null;
+    const first = new Promise((r) => { firstDone = r; });
+    // Fix › Retry now: every source again, skipping "checked recently" and FRED's saved copy
+    // (a tap while the first load runs waits for it)
+    FIX_RETRY = async () => {
+      await first;
+      let s = await refresh(latest, true, say);
+      latest = s;
+      s = await refreshFha(s, sayF, isOpen);
+      latest = s;
+      s = await refreshGse(s, sayF, isOpen);
+      latest = s;
+      await sayF("");
+      if (isOpen() && (s.hh || s.fha)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(s))});0`);
+    };
+    const say = async (t) => { try { if (isOpen()) await wv.evaluateJavaScript(`window.setStatus(${JSON.stringify(t)});0`); } catch (e) {} };
+    const sayF = async (t) => { try { if (isOpen()) await wv.evaluateJavaScript(`window.setFhaStatus(${JSON.stringify(t)});0`); } catch (e) {} };
     try {
       await sleep(700); // let the page draw before the downloads start
-      const say = async (t) => { try { if (isOpen()) await wv.evaluateJavaScript(`window.setStatus(${JSON.stringify(t)});0`); } catch (e) {} };
       const fresh = await refresh(saved, false, say);
       latest = fresh;
       if (isOpen() && fresh.hh) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(fresh))});0`);
       else if (isOpen() && fresh.errors) await wv.evaluateJavaScript(`document.getElementById("errs").textContent = ${JSON.stringify("Couldn't load: " + fresh.errors.join(" · "))};0`);
       // then HUD's FHA reports (the first time, a few minutes to read back to 2015)
-      const sayF = async (t) => { try { if (isOpen()) await wv.evaluateJavaScript(`window.setFhaStatus(${JSON.stringify(t)});0`); } catch (e) {} };
       const withFha = await refreshFha(fresh, sayF, isOpen);
       latest = withFha;
       if (isOpen() && (withFha.hh || withFha.fha)) await wv.evaluateJavaScript(`window.update(${JSON.stringify(payload(withFha))});0`);
@@ -2338,6 +2490,7 @@ async function openFullScreen(saved) {
     } catch (e) {
       try { await wv.evaluateJavaScript(`document.getElementById("errs").textContent = ${JSON.stringify("Couldn't load the data: " + (e.message || e))};0`); } catch (e2) {}
     }
+    firstDone();
     await poll;
   });
 }

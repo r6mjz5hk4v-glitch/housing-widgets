@@ -2,6 +2,10 @@
  "MortgageSpreadWidget.js": [
   {
    "d": "2026-11-22",
+   "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (asks FRED, Yahoo, MBA and the Philly Fed again right away), open the source's page, or copy a report for Claude."
+  },
+  {
+   "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
   {
@@ -26,6 +30,10 @@
   }
  ],
  "MarketRateWidget.js": [
+  {
+   "d": "2026-11-22",
+   "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (asks FRED and MBA again right away and redraws), open the source's page, or copy a report for Claude."
+  },
   {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
@@ -132,6 +140,10 @@
  "NewConstructionWidget.js": [
   {
    "d": "2026-11-22",
+   "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (Census, forecasts and cancellations again right away), open the source's page, or copy a report for Claude."
+  },
+  {
+   "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
   {
@@ -174,6 +186,10 @@
   }
  ],
  "BuilderStocksWidget.js": [
+  {
+   "d": "2026-11-22",
+   "t": "Sources that aren't coming through (Yahoo prices or market caps, SEC share counts) now have a Fix button: see the error, Retry now, open the source, or copy a report for Claude. The schedule shows even before the first prices load."
+  },
   {
    "d": "2026-11-19",
    "t": "When ElevenLabs won't record with a voice, Listen now shows ElevenLabs' actual reason and offers to go back to your previous voice, pick another, or use the iPhone voice, instead of wrongly saying your key didn't work. It only asks for a new key when ElevenLabs says the key itself is bad."
@@ -354,6 +370,10 @@
  "BorrowerCreditWidget.js": [
   {
    "d": "2026-11-22",
+   "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (checks NY Fed, Freddie, HUD, Fannie and Freddie again right away), open the source's page, or copy a report for Claude."
+  },
+  {
+   "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
   },
   {
@@ -454,6 +474,10 @@
   }
  ],
  "UnemploymentWidget.js": [
+  {
+   "d": "2026-11-22",
+   "t": "Late sources in the release schedule now have a Fix button: see the error, Retry now (every source again right away, skipping FRED's saved copy), open the source's page, or copy a report for Claude."
+  },
   {
    "d": "2026-11-22",
    "t": "Asks FRED only when new data can exist (after each scheduled release, then every few hours until it posts), sharing one saved copy with your other widgets. Fewer \"too many requests\" errors and faster opens."
