@@ -334,6 +334,29 @@ def topup(cache, after, force=False):
     return st
 
 
+def probe():
+    """when nothing downloads: what sec.gov answers this machine, with our contact and without"""
+    out = []
+    for url in ("https://www.sec.gov/files/company_tickers.json", "https://data.sec.gov/submissions/CIK0001067983.json",
+                "https://www.sec.gov/Archives/edgar/full-index/2026/QTR3/form.idx", "https://www.sec.gov/dera/data/form-13f"):
+        for label, agent in (("contact", ua()), ("plain", "Mozilla/5.0 (compatible; HousingWidgets/1.0)")):
+            try:
+                req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": agent, "Accept-Encoding": "gzip, deflate"})
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    out.append(f"  {r.status} {label:7} {url}")
+            except urllib.error.HTTPError as e:
+                out.append(f"  {e.code} {label:7} {url}")
+            except Exception as e:
+                out.append(f"  ERR {label:7} {url}: {str(e)[:80]}")
+            time.sleep(0.5)
+    try:
+        ip = urllib.request.urlopen("https://api.ipify.org", timeout=10).read().decode()
+        out.append(f"  (this machine's address: {ip})")
+    except Exception:
+        pass
+    return "\n".join(out)
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser()
@@ -385,7 +408,7 @@ def main():
         time.sleep(1)
 
     if not sets:
-        raise RuntimeError("no SEC bulk file could be read")
+        raise RuntimeError("no SEC bulk file could be read. What sec.gov answers from here:\n" + probe())
     newest = max(sets, key=lambda x: x["window"][1])
     bulk_end = date.fromisoformat(newest["window"][1])
     last_q = max(date.fromisoformat(q) for q in quarter_ends(bulk_end, 4) if date.fromisoformat(q) + timedelta(days=45) <= bulk_end)
