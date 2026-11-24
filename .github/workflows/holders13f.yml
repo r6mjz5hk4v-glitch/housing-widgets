@@ -48,6 +48,7 @@ jobs:
       - name: Read new SEC bulk files and rebuild 13f.json
         env:
           SEC_CONTACT: ${{ github.repository_owner }}@users.noreply.github.com
+          SEC_PROBE: "1"
         run: |
           set -o pipefail
           python3 -u tools/holders13f/build.py --cache databr/13f-sets --out databr/13f.json 2>&1 | tee build.log

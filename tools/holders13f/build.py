@@ -339,7 +339,8 @@ def probe():
     out = []
     for url in ("https://www.sec.gov/files/company_tickers.json", "https://data.sec.gov/submissions/CIK0001067983.json",
                 "https://www.sec.gov/Archives/edgar/full-index/2026/QTR3/form.idx", "https://www.sec.gov/dera/data/form-13f"):
-        for label, agent in (("contact", ua()), ("plain", "Mozilla/5.0 (compatible; HousingWidgets/1.0)")):
+        for label, agent in (("contact", ua()), ("plain", "Mozilla/5.0 (compatible; HousingWidgets/1.0)"),
+                             ("example", "Housing Widgets admin@example.com"), ("repo", "Housing Widgets https://github.com/r6mjz5hk4v-glitch/housing-widgets")):
             try:
                 req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": agent, "Accept-Encoding": "gzip, deflate"})
                 with urllib.request.urlopen(req, timeout=30) as r:
@@ -358,6 +359,8 @@ def probe():
 
 
 def main():
+    if os.environ.get("SEC_PROBE"):
+        raise RuntimeError("probe only. What sec.gov answers from here:\n" + probe())
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", required=True, help="folder for the per-file extracts")
