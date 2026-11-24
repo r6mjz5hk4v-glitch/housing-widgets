@@ -14,7 +14,7 @@ Only public SEC data goes in the output. SEC asks every request to name a contac
 in the SEC_CONTACT environment variable (on GitHub: the account's no-reply address).
 Python standard library only.
 """
-import csv, io, json, os, re, sys, time, urllib.request, zipfile
+import csv, io, json, os, re, sys, time, urllib.error, urllib.request, zipfile
 from datetime import date, datetime, timedelta, timezone
 
 # the builders Builder Stocks follows (its CANDIDATES), and how filers spell them in 13Fs
@@ -61,11 +61,25 @@ def ua():
 
 
 def get(url, tries=4):
+    # SEC's fair-access rules: a User-Agent naming a contact, and gzip accepted
     for k in range(tries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": ua(), "Accept-Encoding": "identity"})
+            req = urllib.request.Request(url, headers={"User-Agent": ua(), "Accept-Encoding": "gzip, deflate", "Accept": "*/*"})
             with urllib.request.urlopen(req, timeout=300) as r:
-                return r.read()
+                data = r.read()
+                if r.headers.get("Content-Encoding", "") == "gzip":
+                    import gzip
+                    data = gzip.decompress(data)
+                return data
+        except urllib.error.HTTPError as e:
+            body = ""
+            try:
+                body = e.read()[:300].decode("utf-8", "replace")
+            except Exception:
+                pass
+            if k == tries - 1 or e.code == 404:
+                raise RuntimeError(f"couldn't download {url}: HTTP {e.code} {re.sub(r'<[^>]+>|\\s+', ' ', body)[:200]}")
+            time.sleep(10 * (k + 1))
         except Exception as e:
             if k == tries - 1:
                 raise RuntimeError(f"couldn't download {url}: {e}")
