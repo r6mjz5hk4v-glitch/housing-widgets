@@ -1,6 +1,7 @@
 # Big investors in the homebuilders (Builder Stocks): once a day, see whether the SEC has
 # posted a new Form 13F bulk file; if so, read it and update 13f.json on the "data" branch,
-# which the widget downloads. Only public SEC data is stored. SEC asks every request to
+# which the widget downloads. On Mondays (and daily until a catch-up is done) it also reads
+# the 13F filings filed on EDGAR since the newest bulk file. Only public SEC data is stored. SEC asks every request to
 # name a contact: this uses the repo owner's GitHub no-reply address.
 # A failed run, or a bulk file that's overdue, opens a "13F:" issue (closed by the next good run).
 name: 13F big investors
@@ -26,7 +27,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
