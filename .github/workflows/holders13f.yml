@@ -2,7 +2,7 @@
 # posted a new Form 13F bulk file; if so, read it and update 13f.json on the "data" branch,
 # which the widget downloads. On Mondays (and daily until a catch-up is done) it also reads
 # the 13F filings filed on EDGAR since the newest bulk file. Only public SEC data is stored. SEC asks every request to
-# name a contact: this uses the repo owner's GitHub no-reply address.
+# name a contact: the SEC_CONTACT repository secret (SEC turns away GitHub no-reply addresses).
 # A failed run, or a bulk file that's overdue, opens a "13F:" issue (closed by the next good run).
 name: 13F big investors
 
@@ -47,8 +47,9 @@ jobs:
 
       - name: Read new SEC bulk files and rebuild 13f.json
         env:
-          SEC_CONTACT: ${{ github.repository_owner }}@users.noreply.github.com
-          SEC_PROBE: "1"
+          # SEC turns away GitHub no-reply addresses, so the contact is a repository secret
+          # (Settings > Secrets and variables > Actions > SEC_CONTACT): never in the code or logs
+          SEC_CONTACT: ${{ secrets.SEC_CONTACT }}
         run: |
           set -o pipefail
           python3 -u tools/holders13f/build.py --cache databr/13f-sets --out databr/13f.json 2>&1 | tee build.log

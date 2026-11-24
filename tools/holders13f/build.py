@@ -11,7 +11,7 @@ Every fund manager with $100M+ in US stocks files a 13F each quarter listing its
    builder's stock, and writes a small file for Builder Stocks (--out).
 
 Only public SEC data goes in the output. SEC asks every request to name a contact: pass it
-in the SEC_CONTACT environment variable (on GitHub: the account's no-reply address).
+in the SEC_CONTACT environment variable (on GitHub: the SEC_CONTACT repository secret).
 Python standard library only.
 """
 import csv, io, json, os, re, sys, time, urllib.error, urllib.request, zipfile
@@ -56,7 +56,7 @@ MON = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT N
 def ua():
     c = os.environ.get("SEC_CONTACT", "").strip()
     if not c:
-        sys.exit("SEC_CONTACT isn't set (SEC asks every request to name a contact)")
+        sys.exit("SEC_CONTACT isn't set. SEC asks every request to name a contact (a name and an email it accepts; it turns away GitHub no-reply addresses): add it as a repository secret named SEC_CONTACT, under Settings > Secrets and variables > Actions.")
     return "Housing Widgets " + c
 
 
