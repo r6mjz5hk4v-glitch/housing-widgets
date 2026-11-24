@@ -47,7 +47,9 @@ jobs:
       - name: Read new SEC bulk files and rebuild 13f.json
         env:
           SEC_CONTACT: ${{ github.repository_owner_id }}+${{ github.repository_owner }}@users.noreply.github.com
-        run: python3 tools/holders13f/build.py --cache databr/13f-sets --out databr/13f.json | tee build.log
+        run: |
+          set -o pipefail
+          python3 -u tools/holders13f/build.py --cache databr/13f-sets --out databr/13f.json 2>&1 | tee build.log
 
       - name: Save to the data branch
         run: |
@@ -75,6 +77,7 @@ jobs:
             const ok = "${{ job.status }}" === "success";
             if (!ok) problem = `The 13F job failed, so Builder Stocks' big-investor grid isn't updating. [Run](${run})\n\n\`\`\`\n${(fs.existsSync("build.log") ? fs.readFileSync("build.log", "utf8") : "").slice(-2500)}\n\`\`\``;
             else {
+              if (!fs.existsSync("databr/13f.json")) { core.setFailed("no 13f.json"); return; }
               const j = JSON.parse(fs.readFileSync("databr/13f.json", "utf8"));
               const end = new Date(j.newestFile.window[1] + "T00:00:00Z");
               // the next file covers the 3 months after this one; allow it 45 days to appear
