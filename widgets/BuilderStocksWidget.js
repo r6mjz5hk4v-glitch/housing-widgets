@@ -431,6 +431,14 @@ async function refresh(s, force, say, step) {
       });
     }
   }
+  // 4) big investors (13F): in the app only, about twice a day (the file changes quarterly)
+  if (!config.runsInWidget) {
+    const bb = readBig();
+    if (FIX_FORCE || !bb.checked || now - bb.checked >= BIG_EVERY_H * 3600e3 || bb.err) {
+      if (say) await say("Getting the big-investor file…");
+      await timed("13F", async () => { await refreshBig(); });
+    }
+  }
   s.checked = now;
   s.timing = times.length ? `Updated in ${((Date.now() - now) / 1000).toFixed(1)}s (${times.join(", ")})` : "";
   saveStore(s);
@@ -641,7 +649,74 @@ function schedRows(s, M) {
     checked: Math.max(0, ...Object.values(s.shares || {}).map((x) => x.at || 0)) || null,
     err: (() => { const e = Object.entries(s.shares || {}).find(([, x]) => x.err); return e ? e[0] + ": " + e[1].err : null; })(),
   });
+  const big = bigRow();
+  if (big) rows.push(big);
   return rows;
+}
+
+// ---------- Big investors (SEC 13F) ----------
+// Every fund manager with $100M+ in US stocks lists its holdings each quarter (Form 13F,
+// due 45 days after the quarter). The SEC posts them all as one bulk file per 3 months; a
+// GitHub job (tools/holders13f) boils that down to the homebuilders and saves 13f.json on
+// the repo's data branch. Only public SEC data; nothing about you goes to GitHub.
+const BIG_URL = "https://raw.githubusercontent.com/" + UPD_REPO + "/data/13f.json";
+const BIG_FILE = "builder-stocks-13f.json";
+const BIG_EVERY_H = 12; // the file changes about once a quarter
+let BIG = null;
+function readBig() {
+  if (BIG) return BIG;
+  try { const p = fm().joinPath(fm().documentsDirectory(), BIG_FILE); BIG = fm().fileExists(p) ? JSON.parse(fm().readString(p)) : {}; } catch (e) { BIG = {}; }
+  return BIG;
+}
+async function refreshBig() {
+  const b = readBig(), now = Date.now();
+  if (!FIX_FORCE && b.checked && now - b.checked < BIG_EVERY_H * 3600e3 && !b.err) return b;
+  try {
+    const r = new Request(BIG_URL + "?t=" + now);
+    r.timeoutInterval = 30;
+    const j = await r.loadJSON();
+    const code = (r.response && r.response.statusCode) || 0;
+    if (code >= 400) throw new Error("GitHub answered HTTP " + code);
+    if (!j || j.v !== 1 || !Array.isArray(j.periods) || !j.builders) throw new Error("the file isn't in the expected shape");
+    b.j = j; b.at = now; b.err = null;
+  } catch (e) { b.err = "couldn't get the 13F file from GitHub (" + String((e && e.message) || e).slice(0, 120) + ")"; b.errAt = now; }
+  b.checked = now;
+  try { fm().writeString(fm().joinPath(fm().documentsDirectory(), BIG_FILE), JSON.stringify(b)); } catch (e) {}
+  return b;
+}
+function bigQ(iso) { return "Q" + Math.ceil(+iso.slice(5, 7) / 3) + " " + iso.slice(0, 4); }
+function bigRow() {
+  const b = readBig(), j = b.j;
+  const when = (ms) => new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" }) + " CT";
+  const row = { name: "Big investors (SEC 13F bulk file)", page: "https://www.sec.gov/dera/data/form-13f", checked: b.checked || null, err: b.err || null, late: null };
+  if (!j) { row.last = b.err ? "not loaded" : "loading"; row.next = "quarterly"; row.late = b.err || null; return row; }
+  const last = j.periods[j.periods.length - 1], end = j.newestFile.window[1];
+  // the next bulk file covers the 3 months after this one; the SEC posts it some weeks later
+  const nextEnd = new Date(Date.parse(end + "T12:00:00Z") + 91 * 864e5), due = nextEnd.getTime() + 45 * 864e5;
+  const day = (ms) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const ed = j.edgar || {};
+  row.last = j.partial === last
+    ? bigQ(last) + " so far: " + ((j.filers || [])[j.filers.length - 1] || "?") + " funds filed (read from EDGAR through " + (ed.through ? day(Date.parse(ed.through + "T12:00:00Z")) : "?") + ")"
+    : bigQ(last) + " holdings (filings through " + day(Date.parse((ed.through || end) + "T12:00:00Z")) + ")";
+  row.next = "new EDGAR filings every Monday; the SEC's next bulk file (filings through " + day(nextEnd.getTime()) + ") est. by " + day(due);
+  // late: the weekly EDGAR read hasn't run in 10+ days (the bulk file being slow is covered by it)
+  const edAge = ed.through ? (Date.now() - Date.parse(ed.through + "T12:00:00Z")) / 864e5 : 99;
+  if (edAge > 10) row.late = "the weekly EDGAR read last ran " + (ed.through ? Math.round(edAge) + " days ago" : "never") + " (it runs Mondays on GitHub), so new filings aren't in" + (Date.now() > due ? "; the SEC's bulk file is also " + Math.round((Date.now() - due) / 864e5) + " days past its estimate" : "") + ". A GitHub issue tells you why.";
+  if (b.err) row.late = (row.late ? row.late + " Also: " : "Showing the copy from " + when(b.at) + ": ") + b.err;
+  return row;
+}
+// what the page needs: the top builders' rows only
+function bigPayload(M) {
+  const b = readBig(), j = b.j;
+  if (!j) return { err: b.err || null };
+  // the top builders by market cap, largest first (list order before any prices are in)
+  const T = (M.ranked.length ? M.ranked.filter((r) => !r.thin).slice(0, TOP_N).map((r) => r.t) : CANDIDATES.slice(0, TOP_N).map((c) => c.t)).filter((t) => j.builders[t]);
+  const pos = j.pos.filter((p) => T.includes(p.t));
+  const funds = {};
+  pos.forEach((p) => { funds[p.cik] = j.funds[p.cik] || { name: p.cik, index: false }; });
+  const builders = {};
+  T.forEach((t) => { builders[t] = j.builders[t]; });
+  return { order: T, periods: j.periods, newestFile: j.newestFile, built: j.built, partial: j.partial || null, filers: j.filers || null, edgar: j.edgar || null, builders, funds, pos, err: b.err || null };
 }
 
 // ---------- The page ----------
@@ -668,7 +743,7 @@ function payload(s) {
   const M = model(s, WINDOW);
   const base = { ...M, top: M.top.map((r) => r.t), ranked: M.ranked.map((r) => { const o = { ...r }; delete o.cells; return o; }) };
   return {
-    windows: WINDOWS, start: WINDOW, maxDays: MAX_DAYS, base, series: series(s, M), sched: fixPages(schedRows(s, M)), earn: earnRows(s, M),
+    windows: WINDOWS, start: WINDOW, maxDays: MAX_DAYS, base, series: series(s, M), sched: fixPages(schedRows(s, M)), earn: earnRows(s, M), big: bigPayload(M),
     colors: { down: DOWN.map(([lo, c]) => [lo === -Infinity ? null : lo, c]), up: UP.map(([lo, c]) => [lo === -Infinity ? null : lo, c]) },
     checked: s.checked || null, sec: !!secContact(), voice: voiceLabel(s),
     sources: "Sources: stock prices from Yahoo Finance's chart feed (about 15 minutes delayed; Stooq daily closes when Yahoo doesn't answer). Market caps from Yahoo Finance's quote feed; where Yahoo gives none, an SEC estimate (marked “SEC est.”): latest price × shares outstanding from the company's latest SEC filing (the cover-page count, or the latest quarter's diluted weighted-average shares where SEC's data has none, as for Lennar's two share classes). Top 10 of " + CANDIDATES.length + " US public homebuilders by market cap. Past 150 trading days, each cell is a week (its last trading day).",
@@ -722,6 +797,24 @@ window.onerror = function (m, src, line) { window.__drawn = true; var e = docume
   .up { color:#7FB2DA; } .dn { color:#E89B5A; }
   .note { color:#98989F; font-size:11.5px; line-height:1.45; margin-top:16px; }
   .btn { background:#2C2C2E; color:#64D2FF; border:none; border-radius:10px; padding:9px 12px; font:inherit; font-size:13.5px; font-weight:600; margin-top:12px; }
+  .bigWrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:6px 0 4px; }
+  table.bg { border-collapse:separate; border-spacing:2px; width:auto; min-width:100%; font-size:11.5px; }
+  .bg th { color:#98989F; font-weight:600; font-size:11px; text-align:center; padding:3px 2px; }
+  .bg th[data-bt] { color:#64D2FF; }
+  .bg td { border:none; border-radius:5px; padding:7px 3px; text-align:center; white-space:nowrap; font-weight:600; min-width:40px; }
+  .bg td.f, .bg th.f { position:sticky; left:0; z-index:1; background:#1C1C1E; text-align:left; white-space:normal; min-width:104px; max-width:128px; font-weight:600; color:#FFFFFF; font-size:11.5px; line-height:1.2; }
+  .bg th.f { color:#98989F; }
+  .bg td.f small { display:block; color:#98989F; font-weight:400; font-size:10px; }
+  .bg td.na { color:#636366; }
+  .bg td.sel { outline:2px solid #64D2FF; }
+  .bg td.net { font-weight:400; color:#98989F; }
+  .bigKey { color:#8E8E93; font-size:10.5px; line-height:1.4; margin:2px 0 8px; }
+  .bcx { background:#2C2C2E; border-radius:10px; padding:9px 11px; font-size:12.5px; line-height:1.5; margin:4px 0 10px; }
+  .bcx b { display:block; margin-bottom:2px; }
+  .lnk { background:none; border:none; color:#64D2FF; font:inherit; font-weight:600; padding:4px 0 0; }
+  .pick { width:100%; background:#2C2C2E; color:#FFFFFF; border:none; border-radius:9px; padding:8px 10px; font:inherit; font-size:14px; margin:0 0 6px; }
+  .chT { font-size:13.5px; font-weight:600; margin:4px 0 2px; }
+  #bigHead .late { color:#FF9F0A; }
 </style>
 </head>
 <body>
@@ -737,6 +830,17 @@ window.onerror = function (m, src, line) { window.__drawn = true; var e = docume
   <div class="ro" id="ro"></div>
   <svg id="hm"></svg>
   <div class="legend" id="legend"></div>
+  <h2>Big investors (SEC 13F)</h2>
+  <div class="ro" id="bigHead"></div>
+  <div class="seg" id="bigSeg"><button data-all="0" class="on">Active only</button><button data-all="1">All holders</button></div>
+  <div class="bigWrap" id="bigGrid"></div>
+  <div class="bigKey" id="bigKey"></div>
+  <div id="bigCell"></div>
+  <div class="seg" id="chSeg"><button data-m="inv" class="on">By investor</button><button data-m="bld">By builder</button></div>
+  <select class="pick" id="chPick"></select>
+  <div class="chT" id="chTitle"></div>
+  <div class="lede" id="chSub"></div>
+  <svg id="bigChart"></svg>
   <h2>Market caps</h2>
   <table id="caps"></table>
   <div class="note" id="note"></div>
@@ -959,6 +1063,7 @@ function render() {
   el("voiceBtn").textContent = "Voice: " + (D.voice || "iPhone voice");
   // the release schedule (and its Fix panel) shows even before any prices come in
   renderSched();
+  try { renderBig(); } catch (e) { el("bigHead").textContent = "Big investors: " + e.message; }
   // first open on a phone: nothing saved yet, so wait for the first prices
   if (!D.series || !D.series.dates || D.series.dates.length < 2) {
     // done looking (checked is set) and still no prices: say so, with why, instead of waiting forever
@@ -1016,12 +1121,217 @@ el("hm").addEventListener("click", function (e) {
 });
 el("secBtn").addEventListener("click", function () { req = "sec"; });
 el("voiceBtn").addEventListener("click", function () { req = "voice"; });
-window.addEventListener("resize", function () { if (D) renderHeat(); });
+window.addEventListener("resize", function () { if (D) { renderHeat(); try { renderBig(); } catch (e) {} } });
 
-// ---- Share as PDF: two 16:9 slides ----
+// ---- Big investors (SEC 13F): needle movers in the top builders ----
+// A fund shows if it owns 1%+ of a top builder or bought or sold 1/4%+ of one last
+// quarter; biggest moves first, 10 at most; Berkshire Hathaway pinned when it holds any.
+var BIGS = { all: false, mode: "inv", inv: null, bld: null, cell: null };
+var BERK = "1067983", SUFFIX = /[ ,.]+(INC|LLC|L ?L ?C|LP|L ?P|LTD|CORP|CORPORATION|CO|COMPANY|PLC|SA|AG|NV|N ?A|LIMITED|GROUP|HOLDINGS?|MANAGEMENT|MGMT|ADVISORS?|PARTNERS|CAPITAL MANAGEMENT|INVESTMENT MANAGEMENT|ASSET MANAGEMENT|& CO)[ .,]*$/i;
+function bigQ(iso) { return "Q" + Math.ceil(+iso.slice(5, 7) / 3) + " " + iso.slice(0, 4); }
+function bigQs(iso) { return "Q" + Math.ceil(+iso.slice(5, 7) / 3) + " " + String.fromCharCode(8217) + iso.slice(2, 4); }
+function bigNum(v) { return v == null ? "–" : Math.round(v).toLocaleString("en-US"); }
+function bigPc(v) { return v == null ? "–" : (v > 0 && v < 0.1 ? v.toFixed(2) : v.toFixed(1)) + "%"; }
+function bigUsd(m) { return m == null ? "–" : m >= 1000 ? "$" + (m / 1000).toFixed(2) + "B" : "$" + m.toFixed(m >= 100 ? 0 : 1) + "M"; }
+function bigNear(a, i) { for (var k = 1; k < a.length; k++) { if (a[i - k] != null) return a[i - k]; if (a[i + k] != null) return a[i + k]; } return null; }
+// "BERKSHIRE HATHAWAY INC" -> "Berkshire Hathaway"
+function bigShort(n) {
+  var t = String(n || "").trim(), k = 0;
+  while (SUFFIX.test(t) && k++ < 4) t = t.replace(SUFFIX, "");
+  if (t === t.toUpperCase()) t = t.split(" ").map(function (w) { return w.length <= 3 && !/[AEIOUY]/.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase(); }).join(" ");
+  return t || String(n);
+}
+function bigModel() {
+  var B = D && D.big;
+  if (!B || !B.periods || !B.order || !B.order.length) return null;
+  var P = B.periods, L = P.length - 1, T = B.order, rows = {};
+  B.pos.forEach(function (p) {
+    if (T.indexOf(p.t) < 0) return;
+    var so = B.builders[p.t].shares || [];
+    var pc = p.sh.map(function (v, i) { var s = so[i] || bigNear(so, i); return v == null || !s ? null : v / s * 100; });
+    var f = B.funds[p.cik] || { name: p.cik, index: false };
+    var r = rows[p.cik] || (rows[p.cik] = { cik: p.cik, name: bigShort(f.name), full: f.name, index: !!f.index, cells: {}, score: 0, big: 0, net: 0, buys: 0, sells: 0, filed: true });
+    var c = { t: p.t, p: p, pc: pc, a: p.sh[L - 1], b: p.sh[L], pa: pc[L - 1], pb: pc[L], mv: null };
+    if (c.b == null) r.filed = false;
+    else {
+      c.mv = (pc[L] || 0) - (pc[L - 1] || 0);
+      r.score = Math.max(r.score, Math.abs(c.mv)); r.net += c.mv;
+      if (c.mv > 0.005) r.buys++;
+      if (c.mv < -0.005) r.sells++;
+      r.big = Math.max(r.big, pc[L] || 0);
+    }
+    r.cells[p.t] = c;
+  });
+  var movers = Object.keys(rows).map(function (k) { return rows[k]; }).filter(function (r) {
+    return r.cik !== BERK && (BIGS.all || !r.index) && (r.big >= 1 || r.score >= 0.25);
+  });
+  movers.sort(function (x, y) { return y.score - x.score; });
+  movers = movers.slice(0, 10);
+  var bk = rows[BERK];
+  if (bk && T.some(function (t) { var c = bk.cells[t]; return c && ((c.a || 0) > 0 || (c.b || 0) > 0); })) movers.unshift(bk);
+  return { B: B, P: P, L: L, T: T, rows: movers, all: rows };
+}
+function bigTag(c) {
+  if (!c) return { t: "", k: "" };
+  if (c.b == null) return { t: "·", k: "na" };
+  var a = c.a || 0, b = c.b || 0;
+  if (!a && !b) return { t: "", k: "" };
+  if (!a) return { t: "NEW", k: "buy" };
+  if (!b) return { t: "EXIT", k: "sell" };
+  var ch = (b / a - 1) * 100;
+  if (Math.abs(ch) < 0.5) return { t: "=", k: "" };
+  return { t: (ch > 0 ? "▲" : "▼") + (Math.abs(ch) >= 10 ? Math.round(Math.abs(ch)) : Math.abs(ch).toFixed(1)) + "%", k: ch > 0 ? "buy" : "sell" };
+}
+function bigAlpha(c) { var m = Math.abs((c && c.mv) || 0); return m >= 1 ? 0.62 : m >= 0.25 ? 0.4 : 0.2; }
+function bigShade(c, k) { return k === "buy" ? "rgba(48,209,88," + bigAlpha(c) + ")" : k === "sell" ? "rgba(255,159,10," + bigAlpha(c) + ")" : "transparent"; }
+function bigNet(r) { return !r.filed && !r.buys && !r.sells ? "not filed" : r.buys && r.sells ? "Mixed" : r.buys ? "Buying" : r.sells ? "Selling" : "Holding"; }
+function bigVerb(tag) { return tag === "NEW" ? "took a new stake in" : tag === "EXIT" ? "sold out of" : tag.charAt(0) === "▲" ? "added to" : "trimmed"; }
+// the biggest move in the grid (for the PDF headline)
+function bigTop(G) {
+  var best = null;
+  G.rows.forEach(function (r) { G.T.forEach(function (t) { var c = r.cells[t]; if (c && c.mv != null && Math.abs(c.mv) > 0.0001 && (!best || Math.abs(c.mv) > Math.abs(best.c.mv))) best = { r: r, t: t, c: c }; }); });
+  return best;
+}
+function bigHeadHtml(G) {
+  var B = G.B, P = G.P, L = G.L, part = B.partial === P[L];
+  var h = "<b>" + bigQ(P[L]) + "</b> vs " + bigQ(P[L - 1]) + " holdings, from 13F filings";
+  if (part) h += ' · <span class="late">still coming in: ' + (B.filers ? B.filers[L] : "?") + " funds have filed so far (" + (B.filers ? B.filers[L - 1] : "?") + " filed for " + bigQ(P[L - 1]) + "); due 45 days after the quarter</span>";
+  h += " · needle movers: own 1%+ of a top builder, or bought or sold ¼%+ of one last quarter, biggest moves first" + (BIGS.all ? "" : " · index funds hidden");
+  if (B.err) h += '<br><span class="late">' + esc(B.err) + "</span>";
+  return h;
+}
+function renderBig() {
+  var G = bigModel(), B = D && D.big;
+  window.__bigG = G;
+  ["bigSeg", "chSeg", "chPick", "bigChart", "bigKey"].forEach(function (id) { el(id).style.display = G ? "" : "none"; });
+  if (!G) {
+    el("bigHead").innerHTML = B && B.err ? '<span class="late">' + esc(B.err) + "</span>" : "Loading the big-investor file…";
+    el("bigGrid").innerHTML = ""; el("bigCell").innerHTML = ""; el("chTitle").textContent = ""; el("chSub").textContent = "";
+    return;
+  }
+  el("bigHead").innerHTML = bigHeadHtml(G);
+  [].forEach.call(el("bigSeg").children, function (b) { b.className = (b.getAttribute("data-all") === "1") === BIGS.all ? "on" : ""; });
+  var h = '<table class="bg"><tr><th class="f">Investor</th>';
+  G.T.forEach(function (t) { h += '<th data-bt="' + t + '">' + t + "</th>"; });
+  h += "<th>Net</th></tr>";
+  if (!G.rows.length) h += '<tr><td class="f" colspan="' + (G.T.length + 2) + '">No needle movers in the top builders for ' + bigQ(G.P[G.L]) + (BIGS.all ? "" : " (index funds hidden)") + ".</td></tr>";
+  G.rows.forEach(function (r) {
+    h += '<tr><td class="f" data-bf="' + r.cik + '">' + esc(r.name) + "<small>" + (r.cik === BERK ? "pinned" : r.index ? "index fund" : "") + "</small></td>";
+    G.T.forEach(function (t) {
+      var c = r.cells[t], g = bigTag(c), key = r.cik + "|" + t;
+      h += "<td" + (c ? ' data-bc="' + key + '"' : "") + ' class="' + (g.k === "na" ? "na" : "") + (BIGS.cell === key ? " sel" : "") + '" style="background:' + bigShade(c, g.k) + '">' + g.t + "</td>";
+    });
+    h += '<td class="net">' + bigNet(r) + "</td></tr>";
+  });
+  el("bigGrid").innerHTML = h + "</table>";
+  el("bigKey").textContent = "Each cell: the change in that fund's shares last quarter. ▲▼ added or trimmed · NEW new stake · EXIT sold out · · hasn't filed yet. Green buying, orange selling; darker = a bigger slice of the company. Tap a cell for details, a name or a ticker for its 2-year chart.";
+  el("bigCell").innerHTML = BIGS.cell ? bigCellHtml(G, BIGS.cell.split("|")[0], BIGS.cell.split("|")[1]) : "";
+  renderBigChart(G);
+}
+function bigCellHtml(G, cik, t) {
+  var r = G.all[cik], c = r && r.cells[t];
+  if (!c) return "";
+  var P = G.P, L = G.L, b = G.B.builders[t], acc = c.p.acc[L] || c.p.acc[L - 1];
+  var url = acc ? "https://www.sec.gov/Archives/edgar/data/" + cik + "/" + acc.split("-").join("") + "/" : "";
+  return '<div class="bcx"><b>' + esc(bigShort(r.full)) + " · " + esc(b.name) + " (" + t + ")</b>" +
+    "<div>Shares: " + bigNum(c.a) + " → " + (c.b == null ? "hasn't filed yet" : bigNum(c.b)) + " (" + bigQ(P[L - 1]) + " → " + bigQ(P[L]) + ")</div>" +
+    "<div>Share of the company: " + bigPc(c.pa) + " → " + bigPc(c.pb) + "</div>" +
+    "<div>Value at quarter-end: " + bigUsd(c.p.usd[L - 1]) + " → " + bigUsd(c.p.usd[L]) + "</div>" +
+    (url ? '<button class="lnk" data-open="' + esc(url) + '">The SEC filing ›</button>' : "") + "</div>";
+}
+// the 2-year chart: one investor's builders, or one builder's investors
+function bigSeries(G) {
+  var lines = [], title = "", sub = "";
+  if (BIGS.mode === "inv") {
+    if (!BIGS.inv || !G.all[BIGS.inv]) BIGS.inv = G.rows.length ? G.rows[0].cik : null;
+    var r = BIGS.inv && G.all[BIGS.inv];
+    if (r) G.T.forEach(function (t) { var c = r.cells[t]; if (c && c.pc.some(function (v) { return v > 0; })) lines.push({ key: t, name: t, pc: c.pc, tag: bigTag(c).t, mv: c.mv }); });
+    sub = r ? esc(bigShort(r.full)) + " · each line is one builder it held" : "";
+    title = r ? bigTitle(bigShort(r.full), lines, "inv") : "";
+  } else {
+    if (!BIGS.bld || G.T.indexOf(BIGS.bld) < 0) BIGS.bld = G.T[0];
+    var t = BIGS.bld;
+    G.rows.forEach(function (r) { var c = r.cells[t]; if (c && c.pc.some(function (v) { return v > 0; })) lines.push({ key: r.cik, name: r.name, pc: c.pc, tag: bigTag(c).t, mv: c.mv }); });
+    lines.sort(function (a, b) { return Math.max.apply(null, b.pc.map(function (v) { return v || 0; })) - Math.max.apply(null, a.pc.map(function (v) { return v || 0; })); });
+    lines = lines.slice(0, 6);
+    sub = esc(G.B.builders[t].name) + " (" + t + ") · each line is one of the investors above";
+    title = bigTitle(G.B.builders[t].name, lines, "bld");
+  }
+  var focus = null;
+  lines.forEach(function (l) { if (l.mv != null && (!focus || Math.abs(l.mv) > Math.abs(focus.mv))) focus = l; });
+  lines.forEach(function (l) { l.focus = l === focus; });
+  return { lines: lines, title: title, sub: sub };
+}
+// the headline: the biggest 2-year change, computed
+function bigTitle(who, lines, mode) {
+  var best = null;
+  lines.forEach(function (l) {
+    var v = l.pc.filter(function (x) { return x != null; }), a = v.length ? v[0] : null, b = l.pc[l.pc.length - 1];
+    if (a == null || b == null) return;
+    if (!best || Math.abs(b - a) > Math.abs(best.b - best.a)) best = { l: l, a: a, b: b };
+  });
+  if (!best) return who + ": no position changes in 2 years";
+  var what = mode === "inv" ? "biggest 2-year change in " + best.l.name : best.l.name + " made the biggest 2-year change";
+  return who + ": " + what + ", " + bigPc(best.a) + " → " + bigPc(best.b) + " of the company";
+}
+function renderBigChart(G) {
+  [].forEach.call(el("chSeg").children, function (b) { b.className = b.getAttribute("data-m") === BIGS.mode ? "on" : ""; });
+  var S = bigSeries(G), pick = el("chPick");
+  var opts = BIGS.mode === "inv" ? G.rows.map(function (r) { return [r.cik, r.name]; }) : G.T.map(function (t) { return [t, t + " · " + G.B.builders[t].name]; });
+  pick.innerHTML = opts.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === (BIGS.mode === "inv" ? BIGS.inv : BIGS.bld) ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("");
+  el("chTitle").textContent = S.title;
+  el("chSub").innerHTML = S.sub;
+  var svg = el("bigChart"), W = svg.clientWidth || 360, H = 220, P = G.P;
+  var x0 = 34, x1 = W - 96, y0 = 10, y1 = H - 24;
+  var hi = 0;
+  S.lines.forEach(function (l) { l.pc.forEach(function (v) { if (v != null && v > hi) hi = v; }); });
+  var step = hi > 8 ? 2 : hi > 4 ? 1 : hi > 2 ? 0.5 : hi > 0.8 ? 0.25 : 0.1, top = Math.max(step, Math.ceil(hi * 1.1 / step) * step);
+  var X = function (i) { return x0 + i * (x1 - x0) / Math.max(1, P.length - 1); }, Y = function (v) { return y1 - v / top * (y1 - y0); };
+  var h = "";
+  for (var v = 0; v <= top + 1e-9; v += step) h += '<line x1="' + x0 + '" x2="' + x1 + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="#3A3A3C"/><text x="' + (x0 - 5) + '" y="' + (Y(v) + 3.5) + '" fill="#8E8E93" font-size="10" text-anchor="end">' + (+v.toFixed(2)) + "%</text>";
+  var every = W < 480 ? 2 : 1;
+  P.forEach(function (p, i) { if ((P.length - 1 - i) % every === 0) h += '<text x="' + X(i) + '" y="' + (H - 7) + '" fill="#8E8E93" font-size="10" text-anchor="middle">' + bigQs(p) + "</text>"; });
+  var ends = [];
+  var greys = ["#AEAEB2", "#8E8E93", "#7C7C80", "#636366", "#5A5A5E", "#48484A"], gi = 0;
+  S.lines.forEach(function (l) {
+    var col = l.focus ? "#64D2FF" : greys[Math.min(gi++, greys.length - 1)], seg = [], segs = [];
+    l.pc.forEach(function (v, i) { if (v == null) { if (seg.length) segs.push(seg); seg = []; } else seg.push(X(i).toFixed(1) + "," + Y(v).toFixed(1)); });
+    if (seg.length) segs.push(seg);
+    segs.forEach(function (sg) { h += '<polyline points="' + sg.join(" ") + '" fill="none" stroke="' + col + '" stroke-width="' + (l.focus ? 2.6 : 1.6) + '" stroke-linejoin="round"/>'; });
+    l.pc.forEach(function (v, i) { if (v != null) h += '<circle cx="' + X(i) + '" cy="' + Y(v) + '" r="' + (l.focus ? 2.8 : 2) + '" fill="' + col + '"/>'; });
+    var lv = l.pc[l.pc.length - 1];
+    var yv = lv != null ? Y(lv) : Y(l.pc.filter(function (x) { return x != null; }).slice(-1)[0] || 0);
+    ends.push({ y: yv, text: (l.tag && l.tag !== "=" ? l.tag + " " : "") + l.name, col: l.focus ? "#64D2FF" : "#C7C7CC", bold: l.focus });
+  });
+  // end labels, nudged apart so none overlap
+  ends.sort(function (a, b) { return a.y - b.y; });
+  for (var k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 12) ends[k].y = ends[k - 1].y + 12;
+  ends.forEach(function (e) { var t = e.text.length > 16 ? e.text.slice(0, 15) + "…" : e.text; h += '<text x="' + (x1 + 6) + '" y="' + (e.y + 3.5) + '" fill="' + e.col + '" font-size="10.5"' + (e.bold ? ' font-weight="700"' : "") + ">" + esc(t) + "</text>"; });
+  if (!S.lines.length) h += '<text x="' + ((x0 + x1) / 2) + '" y="' + (H / 2) + '" fill="#8E8E93" font-size="12" text-anchor="middle">No holdings to chart</text>';
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.setAttribute("height", H);
+  svg.innerHTML = h;
+  window.__bigS = S;
+}
+el("bigSeg").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; BIGS.all = b.getAttribute("data-all") === "1"; BIGS.cell = null; renderBig(); });
+el("chSeg").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; BIGS.mode = b.getAttribute("data-m"); renderBig(); });
+el("chPick").addEventListener("change", function () { if (BIGS.mode === "inv") BIGS.inv = el("chPick").value; else BIGS.bld = el("chPick").value; renderBig(); });
+el("bigGrid").addEventListener("click", function (e) {
+  var x = e.target.closest("[data-bt],[data-bf],[data-bc]");
+  if (!x) return;
+  if (x.hasAttribute("data-bt")) { BIGS.mode = "bld"; BIGS.bld = x.getAttribute("data-bt"); }
+  else if (x.hasAttribute("data-bf")) { BIGS.mode = "inv"; BIGS.inv = x.getAttribute("data-bf"); }
+  else { var k = x.getAttribute("data-bc"); BIGS.cell = BIGS.cell === k ? null : k; }
+  renderBig();
+  if (!x.hasAttribute("data-bc")) el("chSeg").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+el("bigCell").addEventListener("click", function (e) { var b = e.target.closest("[data-open]"); if (b) window.__openUrl = b.getAttribute("data-open"); });
+
+// ---- Share as PDF: 16:9 slides (two, plus two for big investors) ----
 window.shareInfo = function () { var M = cur(); return { title: "Builder Stocks", name: cur().n + " trading days", asOf: M.dates.length ? sd(M.dates[M.dates.length - 1]) + ", " + M.dates[M.dates.length - 1].slice(0, 4) : "" }; };
 window.printPdf = function (jsPDF, fonts) {
   var PW = 792, PH = 445.5, M = cur();
+  var G = window.__bigG, S = window.__bigS, NP = G && G.rows.length && S ? 4 : 2;
   var doc = new jsPDF({ unit: "pt", format: [PW, PH], orientation: "landscape" });
   var FACE = "helvetica";
   if (fonts && fonts.regular && fonts.bold) {
@@ -1041,12 +1351,12 @@ window.printPdf = function (jsPDF, fonts) {
   }
   function titles(top, title, sub, cx) { font(true, 11.5, INK); doc.text(clean(title), cx, top + 28, { align: "center" }); font(false, 9, GRY); doc.text(clean(sub), cx, top + 41, { align: "center" }); }
   var asOf = M.dates.length ? sd(M.dates[M.dates.length - 1]) + ", " + M.dates[M.dates.length - 1].slice(0, 4) : "";
-  function banner(page) {
+  function banner(page, src) {
     var bh = 44, by = PH - bh;
     doc.setFillColor(28, 28, 30); doc.rect(0, by, PW, bh, "F");
     doc.setFillColor(201, 162, 39); doc.rect(PW - 176, by + 6, 2, bh - 12, "F");
-    font(false, 7.2, [235, 235, 240]); doc.text(doc.splitTextToSize(clean(D.sources), PW - 176 - 40 - 110).slice(0, 4), 28, by + 11);
-    font(false, 7.5, [200, 200, 205]); doc.text("Data through " + asOf, PW - 188, by + 20, { align: "right" }); doc.text(page + " of 2 · " + M.n + " trading days", PW - 188, by + 31, { align: "right" });
+    font(false, 7.2, [235, 235, 240]); doc.text(doc.splitTextToSize(clean(src || D.sources), PW - 176 - 40 - 110).slice(0, 4), 28, by + 11);
+    font(false, 7.5, [200, 200, 205]); doc.text(src ? "Holdings as of " + bigQ(G.P[G.L]) : "Data through " + asOf, PW - 188, by + 20, { align: "right" }); doc.text(page + " of " + NP + (src ? " · SEC 13F" : " · " + M.n + " trading days"), PW - 188, by + 31, { align: "right" });
     font(true, 12.5, [255, 255, 255]); doc.text("Builder", PW - 162, by + 20); doc.text("Stocks", PW - 162, by + 34);
   }
   function tc(p) { return p == null ? INK : p > 0.05 ? UPI : p < -0.05 ? DNI : INK; }
@@ -1103,6 +1413,63 @@ window.printPdf = function (jsPDF, fonts) {
     font(true, 9, tc(r.chg)); doc.text(clean(pct(r.chg)), PW - 60, y + rh2 / 2 + 3, { align: "right" });
   });
   banner(2);
+  // slides 3 and 4: big investors (13F), as set on the page (Active only / All, the chart's pick)
+  if (NP === 4) {
+    var SRC13 = "Sources: SEC Form 13F filings (the SEC's quarterly bulk data sets" + (G.B.edgar && G.B.edgar.filings ? ", plus filings read from EDGAR since the newest one" : "") + "). Holdings as of each quarter's end, filed up to 45 days later. Share of the company = shares held / shares outstanding from the company's SEC filings. Needle movers: own 1%+ of a top builder, or bought or sold 1/4%+ of one last quarter." + (BIGS.all ? "" : " Index funds (Vanguard, BlackRock, State Street, Geode, Northern Trust, Schwab, Norges Bank, Legal & General) hidden.");
+    var VERB = function (tag) { return tag === "NEW" ? "Took a New Stake in" : tag === "EXIT" ? "Sold Out of" : tag.charAt(0) === "▲" ? "Added to" : "Trimmed"; };
+    var sign = function (t) { return clean(t.split("▲").join("+").split("▼").join("-")); };
+    doc.addPage([PW, PH], "landscape");
+    var bt = bigTop(G), Lq = bigQ(G.P[G.L]);
+    var nb = G.rows.filter(function (r) { return r.net > 0.005; }).length, ns = G.rows.filter(function (r) { return r.net < -0.005; }).length;
+    top = headline(bt ? bigShort(bt.r.full) + " " + VERB(bigTag(bt.c).t) + " " + G.B.builders[bt.t].name + " in " + Lq + ", the Biggest Move Among Big Investors (" + (bt.c.mv > 0 ? "+" : "-") + Math.abs(bt.c.mv).toFixed(2) + " Points of the Company)" : "Big Investors in the Top Builders, " + Lq);
+    titles(top, "Big Investors' Moves Last Quarter: " + bigQ(G.P[G.L - 1]) + " to " + Lq, G.rows.length + " investors · " + nb + " net buyers, " + ns + " net sellers" + (G.B.partial === G.P[G.L] ? " · " + Lq + " filings still coming in" : ""), PW / 2);
+    var gx0 = 36, nameW = 150, netW = 56, gT = top + 56, gB = PH - 64, cols = G.T.length, cw3 = (PW - 72 - nameW - netW) / Math.max(1, cols), rh3 = Math.min(25, (gB - gT - 26) / Math.max(1, G.rows.length));
+    font(true, 8.5, GRY);
+    G.T.forEach(function (t, i) { doc.text(t, gx0 + nameW + i * cw3 + cw3 / 2, gT + 9, { align: "center" }); });
+    doc.text("Net", gx0 + nameW + cols * cw3 + netW / 2, gT + 9, { align: "center" });
+    G.rows.forEach(function (r, k) {
+      var y = gT + 14 + k * rh3, tagged = r.cik === BERK || r.index;
+      font(true, 9, INK); doc.text(clean(r.name).slice(0, 30), gx0, y + rh3 / 2 + (tagged ? -1 : 3));
+      if (tagged) { font(false, 7, GRY); doc.text(r.cik === BERK ? "pinned" : "index fund", gx0, y + rh3 / 2 + 7.5); }
+      G.T.forEach(function (t, i) {
+        var c = r.cells[t], g = bigTag(c), x = gx0 + nameW + i * cw3;
+        if (g.k === "buy" || g.k === "sell") {
+          var base = g.k === "buy" ? [52, 168, 83] : [230, 126, 34], al = bigAlpha(c);
+          doc.setFillColor(Math.round(255 - (255 - base[0]) * al), Math.round(255 - (255 - base[1]) * al), Math.round(255 - (255 - base[2]) * al));
+          doc.roundedRect(x + 1, y + 1, cw3 - 2, rh3 - 2, 2, 2, "F");
+        }
+        if (g.t) { font(g.k !== "na", 8.5, g.k === "na" ? GRY : INK); doc.text(g.k === "na" ? "n/f" : sign(g.t), x + cw3 / 2, y + rh3 / 2 + 3, { align: "center" }); }
+      });
+      font(false, 8.5, GRY); doc.text(bigNet(r), gx0 + nameW + cols * cw3 + netW / 2, y + rh3 / 2 + 3, { align: "center" });
+    });
+    font(false, 7.5, GRY); doc.text("Each cell: the change in that fund's shares last quarter (+ added, - trimmed; NEW new stake; EXIT sold out; n/f not filed yet). Green buying, orange selling; darker = a bigger slice of the company.", gx0, gT + 14 + G.rows.length * rh3 + 12);
+    banner(3, SRC13);
+    // slide 4: the 2-year chart
+    doc.addPage([PW, PH], "landscape");
+    top = headline(S.title.charAt(0).toUpperCase() + S.title.slice(1));
+    titles(top, (BIGS.mode === "inv" ? "Share of Each Builder's Stock Held" : "Share of the Company Held by Each Investor") + ", Quarter-Ends " + bigQ(G.P[0]) + " to " + Lq, fixText(S.sub), PW / 2);
+    var cx0 = 70, cx1 = PW - 170, cy0 = top + 62, cy1 = PH - 78, hi4 = 0;
+    S.lines.forEach(function (l) { l.pc.forEach(function (v) { if (v != null && v > hi4) hi4 = v; }); });
+    var st4 = hi4 > 8 ? 2 : hi4 > 4 ? 1 : hi4 > 2 ? 0.5 : hi4 > 0.8 ? 0.25 : 0.1, tp4 = Math.max(st4, Math.ceil(hi4 * 1.1 / st4) * st4);
+    var X4 = function (i) { return cx0 + i * (cx1 - cx0) / Math.max(1, G.P.length - 1); }, Y4 = function (v) { return cy1 - v / tp4 * (cy1 - cy0); };
+    doc.setLineWidth(0.5);
+    for (var v4 = 0; v4 <= tp4 + 1e-9; v4 += st4) { doc.setDrawColor(RULE[0], RULE[1], RULE[2]); doc.line(cx0, Y4(v4), cx1, Y4(v4)); font(false, 8, GRY); doc.text((+v4.toFixed(2)) + "%", cx0 - 6, Y4(v4) + 3, { align: "right" }); }
+    G.P.forEach(function (p, i) { font(false, 8, GRY); doc.text(clean(bigQs(p)), X4(i), cy1 + 13, { align: "center" }); });
+    var ends4 = [], gk = 0, greys4 = [[120, 120, 126], [150, 150, 156], [170, 170, 176], [186, 186, 190], [200, 200, 204], [212, 212, 216]];
+    S.lines.forEach(function (l) {
+      var c = l.focus ? [40, 100, 160] : greys4[Math.min(gk++, greys4.length - 1)];
+      doc.setDrawColor(c[0], c[1], c[2]); doc.setLineWidth(l.focus ? 2.2 : 1.3);
+      for (var i = 1; i < l.pc.length; i++) if (l.pc[i] != null && l.pc[i - 1] != null) doc.line(X4(i - 1), Y4(l.pc[i - 1]), X4(i), Y4(l.pc[i]));
+      l.pc.forEach(function (v, i) { if (v != null) { doc.setFillColor(c[0], c[1], c[2]); doc.circle(X4(i), Y4(v), l.focus ? 2.2 : 1.5, "F"); } });
+      var lv = l.pc.filter(function (x) { return x != null; }).slice(-1)[0];
+      ends4.push({ y: Y4(lv || 0), text: (l.tag && l.tag !== "=" && l.tag !== "·" ? sign(l.tag) + " " : "") + l.name, focus: l.focus });
+    });
+    ends4.sort(function (a, b) { return a.y - b.y; });
+    for (var q4 = 1; q4 < ends4.length; q4++) if (ends4[q4].y - ends4[q4 - 1].y < 11) ends4[q4].y = ends4[q4 - 1].y + 11;
+    ends4.forEach(function (e) { font(e.focus, 8.5, e.focus ? [40, 100, 160] : INK); doc.text(clean(e.text).slice(0, 28), cx1 + 8, e.y + 3); });
+    if (!S.lines.length) { font(false, 10, GRY); doc.text("No holdings to chart", (cx0 + cx1) / 2, (cy0 + cy1) / 2, { align: "center" }); }
+    banner(4, SRC13);
+  }
   return doc;
 };
 if (D) render(); else el("lede").textContent = "Loading prices…";
