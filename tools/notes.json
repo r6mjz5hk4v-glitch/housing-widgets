@@ -1,6 +1,10 @@
 {
  "MortgageSpreadWidget.js": [
   {
+   "d": "2026-11-26",
+   "t": "Forecast labels say whose forecast each line is and which round (\"MBA Oct '26: 210 bps by Q4 2028\"). On the PDF they sit in a column tied to their lines and no longer run off the slide; on screen a key under each chart lists every round."
+  },
+  {
    "d": "2026-11-23",
    "t": "Fixes the black screen: if iOS drops the full-screen page, it redraws itself (twice at most) with a small gray note saying so. Background refreshes now start a couple of seconds after the page appears, so it draws first."
   },

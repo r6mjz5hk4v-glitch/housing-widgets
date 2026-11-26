@@ -886,6 +886,24 @@ window.printPdf = function (jsPDF, fonts) {
       "Expected path = 10-year yield minus the term premium; approximate, since the model's premium is for a zero-coupon bond. The premium posts about a week behind.");
   }
 
+  // forecast labels in a column right of the chart, each tied to its line's end by a thin
+  // line in its color; the column is as wide as the longest label
+  function labW(items) {
+    var mw = 0;
+    items.forEach(function (it) { font(it.b, 9, it.c); mw = Math.max(mw, doc.getTextWidth(it.t)); });
+    return Math.min(300, Math.max(90, mw));
+  }
+  function sideLabels(items, R, T, B) {
+    items.sort(function (p, q) { return p.y - q.y; });
+    items.forEach(function (it, k) { it.ly = it.y; if (k && it.ly - items[k - 1].ly < 12) it.ly = items[k - 1].ly + 12; });
+    var ov = items.length ? items[items.length - 1].ly - B : 0;
+    if (ov > 0) items.forEach(function (it) { it.ly = Math.max(T, it.ly - ov); });
+    items.forEach(function (it) {
+      doc.setDrawColor(it.c[0], it.c[1], it.c[2]); doc.setLineWidth(0.6);
+      doc.line(it.x + 3, it.y, R + 8, it.ly); doc.line(R + 8, it.ly, R + 12, it.ly);
+      font(it.b, 9, it.c); doc.text(it.t, R + 15, it.ly + 3.2);
+    });
+  }
   // ---- 4. Where the spread is headed ----
   if (SFM) {
     doc.addPage([W, H], "landscape");
@@ -895,7 +913,10 @@ window.printPdf = function (jsPDF, fonts) {
     titles(top, "Mortgage Spread: Freddie Mac 30-Year Minus 10-Year Treasury, Actual and MBA Forecast",
       "Weekly, bps · MBA implied spread = its 30-year forecast minus its 10-year forecast" + (SFM.F.mba ? " (" + SFM.F.mba.vintage + ")" : ""));
     var stS = nice(SFM.hi - SFM.lo, 5), loS = Math.floor((SFM.lo - stS * 0.4) / stS) * stS, hiS = Math.ceil((SFM.hi + stS * 0.4) / stS) * stS;
-    var LS = 70, RS = W - 150, TS = top + 58, BS = H - 92;
+    var labS = [];
+    if (lmq) labS.push({ q: lmq, t: "MBA " + fcV(SFM.F.mba.vintage) + " (latest): " + lmq.v + " bps by " + tfcQ(lmq.q), c: GOLD, b: true });
+    SFM.old.forEach(function (o, k) { var e = o.q[o.q.length - 1]; labS.push({ q: e, t: "MBA " + fcV(o.vintage) + ": " + e.v + " bps by " + tfcQ(e.q), c: k ? [186, 156, 86] : [160, 124, 40], b: false }); });
+    var LS = 70, RS = W - 50 - labW(labS), TS = top + 58, BS = H - 92;
     var XS = function (sd) { return LS + (ymdT(sd) - SFM.t0) / (SFM.t1 - SFM.t0) * (RS - LS); };
     var YS = function (v) { return BS - (v - loS) / (hiS - loS) * (BS - TS); };
     doc.setLineWidth(0.5);
@@ -919,7 +940,6 @@ window.printPdf = function (jsPDF, fonts) {
     for (var iS = 1; iS < SFM.act.length; iS++) doc.line(XS(SFM.act[iS - 1][0]), YS(SFM.act[iS - 1][1]), XS(SFM.act[iS][0]), YS(SFM.act[iS][1]));
     doc.setFillColor(SPRO[0], SPRO[1], SPRO[2]); doc.circle(txS, YS(SFM.last[1]), 2.8, "F");
     font(true, 9, SPRO); doc.text(SFM.last[1] + " bps", txS - 5, YS(SFM.last[1]) - 6, { align: "right" });
-    var endsS = [];
     SFM.old.forEach(function (o, k) {
       var c = k ? [232, 214, 165] : [218, 190, 120];
       doc.setDrawColor(c[0], c[1], c[2]); doc.setLineWidth(1.4); doc.setLineDashPattern([3, 3], 0);
@@ -927,7 +947,6 @@ window.printPdf = function (jsPDF, fonts) {
       doc.setLineDashPattern([], 0);
       o.q.forEach(function (x) { doc.setFillColor(c[0], c[1], c[2]); doc.circle(XS(qMid(x.q)), YS(x.v), 1.6, "F"); });
       var e = o.q[o.q.length - 1];
-      if (SFM.inW(qMid(e.q))) endsS.push({ y: YS(e.v), t: o.vintage.slice(0, 3) + " " + e.v + " bps", c: [190, 160, 90] });
     });
     if (SFM.mba.length) {
       doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]); doc.setLineWidth(2); doc.setLineDashPattern([5, 3], 0);
@@ -935,15 +954,9 @@ window.printPdf = function (jsPDF, fonts) {
       SFM.mba.forEach(function (x) { var qx = XS(qMid(x.q)), qy = YS(x.v); doc.line(pxS, pyS, qx, qy); pxS = qx; pyS = qy; });
       doc.setLineDashPattern([], 0);
       SFM.mba.forEach(function (x) { doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]); doc.circle(XS(qMid(x.q)), YS(x.v), 2.2, "F"); });
-      if (SFM.inW(qMid(lmq.q))) endsS.push({ y: YS(lmq.v), t: "MBA " + lmq.v + " bps", c: GOLD });
     }
     doc.restoreGraphicsState();
-    if (endsS.length) {
-      var exS = XS(qMid((SFM.mba.length ? SFM.mba : SFM.old[0].q)[(SFM.mba.length ? SFM.mba : SFM.old[0].q).length - 1].q)) + 8;
-      endsS.sort(function (p, q) { return p.y - q.y; });
-      for (var kS = 1; kS < endsS.length; kS++) if (endsS[kS].y - endsS[kS - 1].y < 13) endsS[kS].y = endsS[kS - 1].y + 13;
-      endsS.forEach(function (it) { font(true, 10, it.c); doc.text(it.t, exS, it.y + 3.5); });
-    }
+    sideLabels(labS.filter(function (it) { return SFM.inW(qMid(it.q.q)); }).map(function (it) { it.x = XS(qMid(it.q.q)); it.y = YS(it.q.v); return it; }), RS, TS, BS);
     var lgS = [{ t: "Freddie Mac 30-yr minus 10-yr Treasury (weekly)", c: SPRO, lw: 1.9 }];
     if (SFM.F.mba) lgS.push({ t: "MBA implied, " + SFM.F.mba.vintage + (SFM.old.length ? " (earlier: " + SFM.old.map(function (o) { return o.vintage.slice(0, 3); }).join(", ") + ", lighter)" : " (quarterly)"), c: GOLD, lw: 2 });
     legend({ B: BS }, lgS);
@@ -957,7 +970,12 @@ window.printPdf = function (jsPDF, fonts) {
     top = headline("Where the 10-Year Treasury Is Headed");
     titles(top, "10-Year Treasury Yield: Actual, MBA Forecast and Professional Forecasters", "Monthly average, % · forecasts are quarterly averages plotted mid-quarter; earlier rounds lighter");
     var stT = nice(TFM.hi - TFM.lo, 5), loT = Math.floor((TFM.lo - stT * 0.4) / stT) * stT, hiT = Math.ceil((TFM.hi + stT * 0.4) / stT) * stT;
-    var LT = 70, RT = W - 160, TT = top + 58, BT = H - 92;
+    var labT = [], emL = TFM.mba.length ? TFM.mba[TFM.mba.length - 1] : null, esL = TFM.spfNow.length ? TFM.spfNow[TFM.spfNow.length - 1] : null;
+    if (emL) labT.push({ q: emL, t: "MBA " + fcV(TFM.F.mba.vintage) + " (latest): " + emL.v.toFixed(1) + "% by " + tfcQ(emL.q), c: PGOLD, b: true });
+    TFM.mbaOld.forEach(function (o, k) { var e = o.q[o.q.length - 1]; labT.push({ q: e, t: "MBA " + fcV(o.name) + ": " + e.v.toFixed(1) + "% by " + tfcQ(e.q), c: k ? [186, 156, 86] : [160, 124, 40], b: false }); });
+    if (esL) labT.push({ q: esL, t: "Forecasters " + fcV(TFM.spfNew.vintage) + " survey (latest): " + esL.v.toFixed(2) + "% by " + tfcQ(esL.q), c: PPUR, b: true });
+    TFM.spfOld.forEach(function (o, k) { var e = o.q[o.q.length - 1]; labT.push({ q: e, t: "Forecasters " + fcV(o.vintage) + " survey: " + e.v.toFixed(2) + "% by " + tfcQ(e.q), c: k ? [176, 146, 204] : [146, 106, 184], b: false }); });
+    var LT = 70, RT = W - 50 - labW(labT), TT = top + 58, BT = H - 92;
     var XT = function (sd) { return LT + (ymdT(sd) - TFM.t0) / (TFM.t1 - TFM.t0) * (RT - LT); };
     var YT = function (v) { return BT - (v - loT) / (hiT - loT) * (BT - TT); };
     doc.setLineWidth(0.5);
@@ -975,7 +993,6 @@ window.printPdf = function (jsPDF, fonts) {
     font(false, 8, GRY); doc.text("Today", txT - 4, TT + 8, { align: "right" });
     doc.setDrawColor(PBL[0], PBL[1], PBL[2]); doc.setLineWidth(1.9);
     for (var iT = 1; iT < TFM.act.length; iT++) doc.line(XT(TFM.act[iT - 1][0]), YT(TFM.act[iT - 1][1]), XT(TFM.act[iT][0]), YT(TFM.act[iT][1]));
-    var endsT = [];
     function qline(q, c, wd, dash, from) {
       doc.setDrawColor(c[0], c[1], c[2]); doc.setLineWidth(wd); doc.setLineDashPattern(dash, 0);
       var px = from ? from[0] : null, py = from ? from[1] : null;
@@ -983,17 +1000,14 @@ window.printPdf = function (jsPDF, fonts) {
       doc.setLineDashPattern([], 0);
       q.forEach(function (x) { doc.setFillColor(c[0], c[1], c[2]); doc.circle(XT(qMid(x.q)), YT(x.v), wd > 1.5 ? 2 : 1.5, "F"); });
     }
-    TFM.mbaOld.forEach(function (o, k) { var c = k ? [232, 214, 165] : [218, 190, 120]; qline(o.q, c, 1.2, [3, 3]); var e = o.q[o.q.length - 1]; if (TFM.inW(qMid(e.q))) endsT.push({ y: YT(e.v), t: "MBA " + o.tag + " " + e.v.toFixed(1) + "%", c: [190, 160, 90], small: true }); });
-    TFM.spfOld.forEach(function (o, k) { var c = k ? [222, 205, 235] : [200, 175, 222]; qline(o.q, c, 1.2, [1.5, 2]); var e = o.q[o.q.length - 1]; if (TFM.inW(qMid(e.q))) endsT.push({ y: YT(e.v), t: o.vintage + " " + e.v.toFixed(2) + "%", c: [170, 140, 200], small: true }); });
-    if (TFM.mba.length) { qline(TFM.mba, PGOLD, 2, [5, 3], TFM.mbaJoin ? [txT, tyT] : null); var emT = TFM.mba[TFM.mba.length - 1]; if (TFM.inW(qMid(emT.q))) endsT.push({ y: YT(emT.v), t: "MBA " + emT.v.toFixed(1) + "% by " + tfcQ(emT.q), c: PGOLD }); }
-    if (TFM.spfNow.length) { qline(TFM.spfNow, PPUR, 2, [1.5, 2], TFM.spfJoin ? [txT, tyT] : null); var esT = TFM.spfNow[TFM.spfNow.length - 1]; if (TFM.inW(qMid(esT.q))) endsT.push({ y: YT(esT.v), t: "Forecasters " + esT.v.toFixed(2) + "% by " + tfcQ(esT.q), c: PPUR }); }
+    TFM.mbaOld.forEach(function (o, k) { var c = k ? [232, 214, 165] : [218, 190, 120]; qline(o.q, c, 1.2, [3, 3]); });
+    TFM.spfOld.forEach(function (o, k) { var c = k ? [222, 205, 235] : [200, 175, 222]; qline(o.q, c, 1.2, [1.5, 2]); });
+    if (TFM.mba.length) { qline(TFM.mba, PGOLD, 2, [5, 3], TFM.mbaJoin ? [txT, tyT] : null); }
+    if (TFM.spfNow.length) { qline(TFM.spfNow, PPUR, 2, [1.5, 2], TFM.spfJoin ? [txT, tyT] : null); }
     doc.setFillColor(PBL[0], PBL[1], PBL[2]); doc.circle(txT, tyT, 2.8, "F");
     font(true, 9, PBL); doc.text(TFM.last[1].toFixed(2) + "%", txT - 5, tyT - 6, { align: "right" });
     doc.restoreGraphicsState();
-    endsT.sort(function (p, q) { return p.y - q.y; });
-    for (var kT = 1; kT < endsT.length; kT++) if (endsT[kT].y - endsT[kT - 1].y < 11) endsT[kT].y = endsT[kT - 1].y + 11;
-    var ovT = endsT.length ? endsT[endsT.length - 1].y - BT : 0; if (ovT > 0) endsT.forEach(function (it) { it.y -= ovT; });
-    endsT.forEach(function (it) { font(!it.small, it.small ? 8 : 9.5, it.c); doc.text(it.t, RT + 8, it.y + 3.5); });
+    sideLabels(labT.filter(function (it) { return TFM.inW(qMid(it.q.q)); }).map(function (it) { it.x = XT(qMid(it.q.q)); it.y = YT(it.q.v); return it; }), RT, TT, BT);
     var lgT = [{ t: "10-year Treasury (monthly average)", c: PBL, lw: 1.9 }];
     if (TFM.F.mba) lgT.push({ t: "MBA, " + TFM.F.mba.vintage, c: PGOLD, lw: 2 });
     if (TFM.spfNew) lgT.push({ t: "Professional forecasters (median), " + TFM.spfNew.vintage + " survey", c: PPUR, lw: 2 });
@@ -1869,6 +1883,9 @@ const DETAIL_HTML = `<!DOCTYPE html>
   .fclink { color:var(--gray); font-size:13px; font-weight:600; padding:10px 0 0; }
   .fclink span { color:#64A8FF; cursor:pointer; padding:4px 0; }
   .fcleg i.dash { background:none; border-top:3px dashed #FFD60A; height:0; }
+  .fckey { font-size:12px; color:#C7C7CC; margin:6px 0 2px; line-height:1.5; }
+  .fckey div { display:flex; align-items:center; gap:7px; }
+  .fckey i { display:inline-block; flex:0 0 18px; height:0; border-top:2.5px dashed; }
   .legend i.dashg { background:none; border-top:3px dashed #C7C7CC; height:0; }
   html, body { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
   @media (max-width: 360px) {
@@ -1934,6 +1951,7 @@ const DETAIL_HTML = `<!DOCTYPE html>
     <div class="fcsub" id="sfcSub"></div>
     <div class="legend fcleg" id="sfcLeg"></div>
     <div style="position:relative"><svg id="sfcChart" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:230px"></svg><div id="sfcTouch" style="position:absolute;left:0;top:0;right:0;bottom:0;touch-action:pan-y"></div></div>
+    <div class="fckey" id="sfcKey"></div>
     <div class="fclink" id="sfcLink" style="display:none"></div>
     <div class="note" id="sfcNote"></div>
   </div>
@@ -1943,6 +1961,7 @@ const DETAIL_HTML = `<!DOCTYPE html>
     <div class="fcsub" id="tfcSub"></div>
     <div class="legend fcleg" id="tfcLeg"></div>
     <div style="position:relative"><svg id="tfcChart" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:230px"></svg><div id="tfcTouch" style="position:absolute;left:0;top:0;right:0;bottom:0;touch-action:pan-y"></div></div>
+    <div class="fckey" id="tfcKey"></div>
     <div class="note" id="tfcNote"></div>
   </div>
 
@@ -2800,6 +2819,12 @@ function sfcModel() {
   if (!vals.length) vals = [last[1]];
   return { F: F, act: act, last: last, mba: mba, old: old, t0: a, t1: b, full0: full0, full1: full1, inW: inW, lo: Math.min.apply(null, vals), hi: Math.max.apply(null, vals) };
 }
+// "Nov 2026" -> "Nov '26", "Q3 2026" -> "Q3 '26"
+function fcV(v) { v = String(v || ""); return v.split(" ")[0] + " " + String.fromCharCode(8217) + v.slice(-2); }
+// the key under a forecast chart: every round, its line, its end value
+function fcKey(rows) {
+  return rows.map(function (r) { return '<div><i style="border-top-color:' + r.c + ";opacity:" + r.op + ";border-top-style:" + (r.dot ? "dotted" : "dashed") + '"></i><span' + (r.op === 1 ? ' style="color:#fff;font-weight:600"' : "") + ">" + r.t + "</span></div>"; }).join("");
+}
 function renderSpreadFc() {
   var M = sfcModel(), sec = el("sfcSec");
   if (!M) { sec.style.display = "none"; return; }
@@ -2841,7 +2866,7 @@ function renderSpreadFc() {
     var e = o.q[o.q.length - 1], ly = Y(e.v) + 14;
     oldLabs.forEach(function (y0) { if (Math.abs(ly - y0) < 12) ly = y0 + 12; });
     oldLabs.push(ly);
-    s += '<text x="' + X(qMid(e.q)).toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="' + FC_GOLD + '" fill-opacity="' + (op + 0.2) + '" font-size="10" font-weight="600" text-anchor="end">' + o.vintage.slice(0, 3) + "</text>";
+    s += '<text x="' + X(qMid(e.q)).toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="' + FC_GOLD + '" fill-opacity="' + (op + 0.2) + '" font-size="10" font-weight="600" text-anchor="end" stroke="#1C1C1E" stroke-width="3" paint-order="stroke">MBA ' + o.vintage.slice(0, 3) + "</text>";
   });
   if (M.mba.length) {
     var dm = "M" + tx.toFixed(1) + " " + Y(M.last[1]).toFixed(1);
@@ -2849,7 +2874,7 @@ function renderSpreadFc() {
     s += '<path d="' + dm + '" fill="none" stroke="' + FC_GOLD + '" stroke-width="2.4" stroke-dasharray="6 4" stroke-linejoin="round"/>';
     M.mba.forEach(function (x) { s += '<circle cx="' + X(qMid(x.q)).toFixed(1) + '" cy="' + Y(x.v).toFixed(1) + '" r="3" fill="' + FC_GOLD + '"/>'; });
     var lm = M.mba[M.mba.length - 1], mtop = Math.max.apply(null, M.mba.map(function (x) { return x.v; }));
-    s += '<text x="' + X(qMid(lm.q)).toFixed(1) + '" y="' + (Y(mtop) - 10).toFixed(1) + '" fill="' + FC_GOLD + '" font-size="10.5" font-weight="700" text-anchor="end">MBA ' + lm.v + " bps</text>";
+    s += '<text x="' + X(qMid(lm.q)).toFixed(1) + '" y="' + (Y(mtop) - 10).toFixed(1) + '" fill="' + FC_GOLD + '" font-size="10.5" font-weight="700" text-anchor="end" stroke="#1C1C1E" stroke-width="3" paint-order="stroke">MBA ' + (M.F.mba ? M.F.mba.vintage.slice(0, 3) + " " : "") + lm.v + " bps</text>";
   }
   sv.innerHTML = s + "</g>";
   var lm2 = M.mba.length ? M.mba[M.mba.length - 1] : null;
@@ -2858,6 +2883,10 @@ function renderSpreadFc() {
   el("sfcLeg").innerHTML = '<span><i style="background:' + SFC_HEX + '"></i>Freddie Mac 30-yr minus 10Y</span>' +
     (M.F.mba ? '<span><i class="dash"></i>MBA implied (' + M.F.mba.vintage + ")</span>" : "") +
     (M.old.length ? '<span><i class="dash" style="opacity:0.45"></i>Earlier: ' + M.old.map(function (o) { return o.vintage.slice(0, 3); }).join(", ") + "</span>" : "");
+  var keyS = [];
+  if (lm2) keyS.push({ c: FC_GOLD, op: 1, t: "MBA " + fcV(M.F.mba.vintage) + " (latest): " + lm2.v + " bps by " + tfcQ(lm2.q) });
+  M.old.forEach(function (o, k) { var e = o.q[o.q.length - 1]; keyS.push({ c: FC_GOLD, op: k ? 0.35 : 0.55, t: "MBA " + fcV(o.vintage) + ": " + e.v + " bps by " + tfcQ(e.q) }); });
+  el("sfcKey").innerHTML = fcKey(keyS);
   var lk = el("sfcLink");
   var all = M.F.mba ? [M.F.mba].concat(M.F.mbaOld || []) : [];
   if (all.length) {
@@ -2931,7 +2960,10 @@ function renderTenFc() {
   function tag(x, y, t, c, op, bold) {
     var tw = t.length * (bold ? 6.3 : 5.7) + 2, lx = Math.min(w - m.r - tw - 2, x - tw / 2), ly = y - 7;
     var hit = function (yy) { return tags.some(function (q) { return lx < q[0] + q[2] + 2 && q[0] < lx + tw + 2 && Math.abs(yy - q[1]) < 10; }); };
-    if (hit(ly)) { ly = y + 14; if (hit(ly)) return ""; }
+    // above the line end, else below, else further out: a crowded tag moves, it never disappears
+    var tries = [y - 7, y + 14, y - 19, y + 26, y - 31, y + 38], k = 0;
+    while (k < tries.length && hit(tries[k])) k++;
+    ly = Math.max(m.t + 9, Math.min(h - m.b - 3, tries[Math.min(k, tries.length - 1)]));
     tags.push([lx, ly, tw]);
     return '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="' + c + '" fill-opacity="' + op + '" font-size="9.5" font-weight="' + (bold ? 800 : 600) + '" stroke="#1C1C1E" stroke-width="3" paint-order="stroke">' + t + "</text>";
   }
@@ -2943,15 +2975,21 @@ function renderTenFc() {
     return o;
   }
   var labs = "";
-  M.mbaOld.forEach(function (o, k) { var op = k ? 0.3 : 0.5; s += line(o.q, FC_GOLD, op, 1.4, "4 4"); var e = o.q[o.q.length - 1]; labs += tag(X(qMid(e.q)), Y(e.v), o.tag, FC_GOLD, op + 0.25, false); });
-  M.spfOld.forEach(function (o, k) { var op = k ? 0.3 : 0.5; s += line(o.q, SPF_HEX, op, 1.4, "2 3"); var e = o.q[o.q.length - 1]; labs += tag(X(qMid(e.q)), Y(e.v), o.vintage.split(" ")[0] + " '" + o.vintage.slice(-2), SPF_HEX, op + 0.25, false); });
-  if (M.mba.length) { s += line(M.mba, FC_GOLD, 1, 2.2, "6 4", M.mbaJoin ? [tx, ty] : null); var em = M.mba[M.mba.length - 1]; labs = tag(X(qMid(em.q)), Y(em.v), "MBA " + em.v.toFixed(1) + "%", FC_GOLD, 1, true) + labs; }
-  if (M.spfNow.length) { s += line(M.spfNow, SPF_HEX, 1, 2.2, "2 3", M.spfJoin ? [tx, ty] : null); var es = M.spfNow[M.spfNow.length - 1]; labs = tag(X(qMid(es.q)), Y(es.v), "Fcstrs " + es.v.toFixed(1) + "%", SPF_HEX, 1, true) + labs; }
+  M.mbaOld.forEach(function (o, k) { var op = k ? 0.3 : 0.5; s += line(o.q, FC_GOLD, op, 1.4, "4 4"); var e = o.q[o.q.length - 1]; labs += tag(X(qMid(e.q)), Y(e.v), "MBA " + o.tag, FC_GOLD, op + 0.25, false); });
+  M.spfOld.forEach(function (o, k) { var op = k ? 0.3 : 0.5; s += line(o.q, SPF_HEX, op, 1.4, "2 3"); var e = o.q[o.q.length - 1]; labs += tag(X(qMid(e.q)), Y(e.v), "Fcst " + fcV(o.vintage), SPF_HEX, op + 0.25, false); });
+  if (M.mba.length) { s += line(M.mba, FC_GOLD, 1, 2.2, "6 4", M.mbaJoin ? [tx, ty] : null); var em = M.mba[M.mba.length - 1]; labs = tag(X(qMid(em.q)), Y(em.v), "MBA " + (M.F.mba ? M.F.mba.vintage.slice(0, 3) + " " : "") + em.v.toFixed(1) + "%", FC_GOLD, 1, true) + labs; }
+  if (M.spfNow.length) { s += line(M.spfNow, SPF_HEX, 1, 2.2, "2 3", M.spfJoin ? [tx, ty] : null); var es = M.spfNow[M.spfNow.length - 1]; labs = tag(X(qMid(es.q)), Y(es.v), "Fcst " + fcV(M.spfNew.vintage) + " " + es.v.toFixed(2) + "%", SPF_HEX, 1, true) + labs; }
   s += '<circle cx="' + tx + '" cy="' + ty + '" r="4" fill="#64A8FF" stroke="#1C1C1E" stroke-width="1.5"/>';
   sv.innerHTML = s + labs + "</g>";
   var em2 = M.mba.length ? M.mba[M.mba.length - 1] : null, es2 = M.spfNow.length ? M.spfNow[M.spfNow.length - 1] : null;
   el("tfcSub").innerHTML = "10-year Treasury " + '<b style="color:#fff">' + M.last[1].toFixed(2) + "%</b> (" + fmtDate(M.last[0]) + ")" +
     (em2 ? ' · <span style="color:' + FC_GOLD + '">MBA ' + em2.v.toFixed(1) + "% by " + tfcQ(em2.q) + "</span>" : "") + (es2 ? ' · <span style="color:' + SPF_HEX + '">forecasters ' + es2.v.toFixed(2) + "% by " + tfcQ(es2.q) + (M.spfJoin ? "" : " (" + ["Feb", "May", "Aug", "Nov"][+M.spfNew.q[0].q.slice(5) - 1] + " survey)") + "</span>" : "");
+  var keyT = [];
+  if (em2) keyT.push({ c: FC_GOLD, op: 1, t: "MBA " + fcV(M.F.mba.vintage) + " (latest): " + em2.v.toFixed(1) + "% by " + tfcQ(em2.q) });
+  M.mbaOld.forEach(function (o, k) { var e = o.q[o.q.length - 1]; keyT.push({ c: FC_GOLD, op: k ? 0.35 : 0.55, t: "MBA " + fcV(o.name) + ": " + e.v.toFixed(1) + "% by " + tfcQ(e.q) }); });
+  if (es2) keyT.push({ c: SPF_HEX, op: 1, dot: true, t: "Forecasters " + fcV(M.spfNew.vintage) + " survey (latest): " + es2.v.toFixed(2) + "% by " + tfcQ(es2.q) });
+  M.spfOld.forEach(function (o, k) { var e = o.q[o.q.length - 1]; keyT.push({ c: SPF_HEX, op: k ? 0.35 : 0.55, dot: true, t: "Forecasters " + fcV(o.vintage) + " survey: " + e.v.toFixed(2) + "% by " + tfcQ(e.q) }); });
+  el("tfcKey").innerHTML = fcKey(keyT);
   el("tfcLeg").innerHTML = '<span><i style="background:#64A8FF"></i>10-year Treasury</span>' +
     (M.F.mba ? '<span><i class="dash"></i>MBA (' + M.F.mba.vintage + ")</span>" : "") +
     (M.spfNew ? '<span><i class="dash" style="border-top-color:' + SPF_HEX + ';border-top-style:dotted"></i>Forecasters (' + M.spfNew.vintage + " survey)</span>" : "") +
